@@ -1,0 +1,80 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-dianne: #233c4b;
+  --color-dianne-dark: #192b36;
+  --color-dianne-light: #325368;
+  --color-crusta: #ff7d2d;
+  --color-crusta-hover: #ea6c1e;
+  --color-crusta-light: #fff2ea;
+  --color-sun: #fac846;
+  --color-sun-light: #fef8e7;
+  --color-olivine: #a0c382;
+  --color-olivine-light: #f1f7ed;
+  --color-patina: #5f9b8c;
+  --color-patina-light: #eef6f4;
+  
+  --color-surface: #f8fafb;
+  --color-surface-subtle: #f1f5f7;
+  --color-card: #ffffff;
+  --color-border: #e2e8f0;
+  --color-muted: #64748b;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #f8fafb;
+  color: #1e293b;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+@keyframes slide-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-in { animation: slide-in-up 0.25s ease-out both; }
+.progress-fill { transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+.sidebar-link:hover {
+  background: #f1f5f7;
+  color: #233c4b;
+}
+.sidebar-link.active {
+  background: #233c4b;
+  color: #ffffff;
+  font-weight: 600;
+}
+.sidebar-link.active svg {
+  color: #fac846;
+}
+
