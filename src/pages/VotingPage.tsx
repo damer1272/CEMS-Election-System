@@ -33,13 +33,14 @@ import {
   getSettings,
   getScheduleStatus,
   getNominatedFinalists,
+  getElectionWinners,
   refreshFromServer,
   candidateQualificationLabel,
   formatDateTimeNice,
   COURSES,
   YEAR_LEVELS
 } from "../data/store";
-import type { Participant, Course, BlockRepresentative, Candidate, ScheduleStatusInfo, PositionFinalistsSummary } from "../data/store";
+import type { Participant, Course, BlockRepresentative, Candidate, ScheduleStatusInfo, PositionFinalistsSummary, PositionWinner } from "../data/store";
 import { scanAndVerifySchoolID, type SchoolIDScanResult } from "../utils/idVerifier";
 
 type Step = "credentials" | "id_verify" | "vote" | "confirm" | "success";
@@ -86,6 +87,7 @@ export default function VotingPage() {
   const [nowDate, setNowDate] = useState<Date>(new Date());
   const [scheduleStatus, setScheduleStatus] = useState<ScheduleStatusInfo>(() => getScheduleStatus(new Date()));
   const [nominatedFinalists, setNominatedFinalists] = useState<PositionFinalistsSummary[]>(() => getNominatedFinalists());
+  const [winners, setWinners] = useState<PositionWinner[]>(() => getElectionWinners());
 
   const reloadData = async () => {
     await refreshFromServer();
@@ -97,6 +99,7 @@ export default function VotingPage() {
     setCandidates(getCandidates());
     setScheduleStatus(getScheduleStatus(currentNow));
     setNominatedFinalists(getNominatedFinalists());
+    setWinners(getElectionWinners());
   };
 
   useEffect(() => {
@@ -111,9 +114,17 @@ export default function VotingPage() {
       reloadData();
     }, 2500);
 
+    const handleStorage = (e: StorageEvent) => {
+      if (!e.key || e.key.includes("cems_election")) {
+        reloadData();
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+
     return () => {
       clearInterval(iv);
       clearInterval(pollServer);
+      window.removeEventListener("storage", handleStorage);
     };
   }, []);
 
@@ -448,9 +459,133 @@ export default function VotingPage() {
   }
 
   // =========================================================================
-  // VIEW: IF TIMED OUT / STAGE 1 ENDED (NOMINATED FINALISTS DISPLAY)
+  // VIEW: IF ELECTION COMPLETED / STAGE 2 ENDED (OFFICIAL WINNERS PROCLAIMED)
   // =========================================================================
-  if (step !== "success" && (scheduleStatus.code === "TIMED_OUT" || scheduleStatus.code === "STAGE_1_ENDED")) {
+  if (
+    step !== "success" &&
+    (currentStage === "COMPLETED" ||
+      scheduleStatus.code === "COMPLETED" ||
+      scheduleStatus.code === "STAGE_2_ENDED" ||
+      (currentStage === "STAGE_2_FINAL" && scheduleStatus.code === "TIMED_OUT"))
+  ) {
+    return (
+      <div className="min-h-screen bg-[#192B36] flex flex-col font-sans text-slate-100 selection:bg-[#FF7D2D] selection:text-white">
+        <header className="px-6 lg:px-10 py-4 flex flex-wrap items-center justify-between border-b border-[#233C4B] bg-[#1E3442]/90 backdrop-blur sticky top-0 z-20 gap-4">
+          <div className="flex items-center gap-3.5">
+            <AppLogo size="md" className="ring-2 ring-[#FAC846]/30 shadow-md" />
+            <div>
+              <p className="text-[#FAC846] text-xs font-semibold uppercase tracking-wider">
+                {settings.organization} · Official Election Results
+              </p>
+              <h1 className="text-white font-bold text-lg sm:text-xl leading-tight mt-0.5">
+                {settings.title}
+              </h1>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 bg-[#FAC846]/20 border border-[#FAC846]/40 rounded-full px-4 py-1.5 text-xs font-bold text-[#FAC846]">
+            <Trophy className="w-4 h-4 text-[#FAC846]" />
+            <span>Election Concluded · Winners Proclaimed</span>
+          </div>
+        </header>
+
+        <div className="flex-1 overflow-y-auto p-6 lg:p-10 max-w-6xl mx-auto w-full space-y-8">
+          <div className="bg-gradient-to-r from-[#233C4B] via-[#1E3442] to-[#16252F] border border-[#FAC846]/40 rounded-3xl p-6 sm:p-8 text-center relative overflow-hidden shadow-2xl">
+            <div className="inline-flex items-center gap-2 bg-[#FAC846]/20 border border-[#FAC846]/50 text-[#FAC846] text-xs font-extrabold px-4 py-1.5 rounded-full mb-3 uppercase tracking-wider">
+              <Trophy className="w-4 h-4 text-[#FAC846]" /> Parliamentary Election Concluded
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white mb-2 tracking-tight">
+              Official Proclamation of Elected CSG Officers
+            </h2>
+            <p className="text-slate-300 text-sm max-w-2xl mx-auto leading-relaxed">
+              Voting has officially closed. All student ballots have been verified and tallied. Congratulations to the newly elected Officers of the Central Student Government!
+            </p>
+
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+              <a
+                href="/"
+                className="inline-flex items-center gap-2 bg-[#FF7D2D] hover:bg-[#EA6C1E] text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-xl transition shadow-lg shadow-[#FF7D2D]/20 cursor-pointer"
+              >
+                <Trophy className="w-4 h-4" /> View Live Results Display
+              </a>
+              <button
+                onClick={reloadData}
+                className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm px-5 py-3 rounded-xl transition border border-white/10 cursor-pointer"
+              >
+                <RefreshCw className="w-4 h-4" /> Refresh Status
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {winners.map(({ position, winner, runnerUp, totalVotes, winnerPercentage, isUncontested }) => (
+              <div key={position} className="bg-[#1E3442] border border-[#FAC846]/30 rounded-3xl p-5 shadow-xl flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between border-b border-[#233C4B] pb-3 mb-4">
+                    <span className="text-[#FAC846] font-extrabold text-xs uppercase tracking-wider">{position}</span>
+                    <span className="text-xs font-bold text-slate-300 bg-[#16252F] px-2.5 py-1 rounded-lg border border-[#233C4B]">
+                      {isUncontested ? "Uncontested" : "Declared Winner"}
+                    </span>
+                  </div>
+
+                  {winner ? (
+                    <div className="space-y-3">
+                      <div className="bg-[#16252F] border border-[#FAC846]/40 rounded-2xl p-4 flex items-center gap-3.5 relative overflow-hidden">
+                        <div className="relative flex-shrink-0">
+                          <Avatar src={winner.photo} name={winner.name} className="w-13 h-13 rounded-full ring-2 ring-[#FAC846]" fallbackClassName="bg-[#233C4B]/40 text-[#FAC846] font-bold" />
+                          <span className="absolute -top-1.5 -right-1.5 text-sm drop-shadow">👑</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="bg-[#FAC846] text-[#233C4B] font-black text-[9px] px-1.5 py-0.5 rounded uppercase">ELECTED</span>
+                          <p className="font-bold text-sm text-white truncate mt-0.5">{winner.name}</p>
+                          <p className="text-xs text-slate-400 truncate">{candidateQualificationLabel(winner)}</p>
+                        </div>
+                        <div className="text-right flex-shrink-0 font-mono">
+                          <p className="font-bold text-base text-[#FAC846]">{winner.stage2Votes ?? winner.votes}</p>
+                          <p className="text-[10px] text-slate-400 uppercase font-semibold">{winnerPercentage}%</p>
+                        </div>
+                      </div>
+
+                      {runnerUp && (
+                        <div className="bg-[#16252F]/60 border border-[#233C4B]/60 rounded-xl p-2.5 flex items-center justify-between text-xs text-slate-400">
+                          <div className="flex items-center gap-2 truncate">
+                            <Avatar src={runnerUp.photo} name={runnerUp.name} className="w-7 h-7 rounded-full" fallbackClassName="bg-slate-700 text-white text-[10px]" />
+                            <span className="truncate">{runnerUp.name}</span>
+                          </div>
+                          <span className="font-mono text-slate-300 font-semibold flex-shrink-0">{runnerUp.stage2Votes ?? runnerUp.votes} votes</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="py-6 text-center text-slate-400 text-xs italic">No candidates registered.</p>
+                  )}
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-[#233C4B]/60 flex items-center justify-between text-[11px] text-slate-400">
+                  <span className="text-[#A0C382] font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Officially Certified
+                  </span>
+                  <span>{totalVotes} total votes</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <footer className="px-6 py-3 border-t border-[#233C4B] bg-[#16252F] text-center text-xs text-slate-400">
+          Pagadian Capitol College, Inc. · Central Student Government Election Management System
+        </footer>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // VIEW: IF STAGE 1 TIMED OUT / STAGE 1 ENDED (NOMINATED FINALISTS DISPLAY)
+  // =========================================================================
+  if (
+    step !== "success" &&
+    ((currentStage === "STAGE_1_NOMINATION" && (scheduleStatus.code === "TIMED_OUT" || scheduleStatus.code === "STAGE_1_ENDED")) ||
+      scheduleStatus.code === "STAGE_1_ENDED")
+  ) {
     return (
       <div className="min-h-screen bg-[#192B36] flex flex-col font-sans text-slate-100 selection:bg-[#FF7D2D] selection:text-white">
         {/* Top Header */}

@@ -109,6 +109,7 @@ interface PersistedState {
   electionSettings: ElectionSettings;
   positions: string[];
   adminUsers?: AdminUser[];
+  lastUpdated?: number;
 }
 
 const STORAGE_KEY = "cems_election_v9_clean";
@@ -233,8 +234,11 @@ function normalizeState(parsed: Partial<PersistedState>): PersistedState {
     adminUsers: Array.isArray(parsed.adminUsers) && parsed.adminUsers.length > 0
       ? parsed.adminUsers
       : DEFAULT_ADMIN_USERS.map(u => ({ ...u })),
+    lastUpdated: typeof parsed.lastUpdated === "number" ? parsed.lastUpdated : 0,
   };
 }
+
+let stateLastUpdated = 0;
 
 function loadStateFromLocalStorage(): PersistedState | null {
   if (typeof window === "undefined") return null;
@@ -248,7 +252,7 @@ function loadStateFromLocalStorage(): PersistedState | null {
 }
 
 function getStateSnapshot(): PersistedState {
-  return { blockReps, candidates, participants, votes, auditLogs, electionSettings, positions, adminUsers };
+  return { blockReps, candidates, participants, votes, auditLogs, electionSettings, positions, adminUsers, lastUpdated: stateLastUpdated };
 }
 
 function applyState(state: PersistedState) {
@@ -260,6 +264,9 @@ function applyState(state: PersistedState) {
   electionSettings = state.electionSettings;
   positions = state.positions;
   adminUsers = state.adminUsers ?? DEFAULT_ADMIN_USERS.map(u => ({ ...u }));
+  if (typeof state.lastUpdated === "number" && state.lastUpdated > 0) {
+    stateLastUpdated = state.lastUpdated;
+  }
 }
 
 async function fetchServerState(): Promise<PersistedState | null> {
@@ -289,6 +296,7 @@ async function saveServerState(state: PersistedState): Promise<void> {
 let persistQueue: Promise<void> = Promise.resolve();
 
 function persistState() {
+  stateLastUpdated = Date.now();
   const state = getStateSnapshot();
   if (typeof window !== "undefined") {
     try {
@@ -328,22 +336,30 @@ export async function initStore(): Promise<void> {
       ].forEach(k => localStorage.removeItem(k));
     } catch {}
   }
+
+  // Synchronously ensure local state is applied first if present to avoid flicker
+  const localState = loadStateFromLocalStorage();
+  if (localState) {
+    applyState(localState);
+  }
+
   const serverState = await fetchServerState();
   if (serverState) {
-    applyState(serverState);
-    if (typeof window !== "undefined") {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(serverState)); } catch {}
-    }
-  } else {
-    const localState = loadStateFromLocalStorage();
-    if (localState) {
+    // If local state has a newer timestamp than server state, protect the local updates and sync up
+    if (localState && localState.lastUpdated && serverState.lastUpdated && localState.lastUpdated > serverState.lastUpdated) {
       applyState(localState);
+      saveServerState(localState);
     } else {
-      const defaults = getDefaultState();
-      applyState(defaults);
+      applyState(serverState);
       if (typeof window !== "undefined") {
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(defaults)); } catch {}
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(serverState)); } catch {}
       }
+    }
+  } else if (!localState) {
+    const defaults = getDefaultState();
+    applyState(defaults);
+    if (typeof window !== "undefined") {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(defaults)); } catch {}
     }
   }
 
@@ -358,15 +374,24 @@ export async function initStore(): Promise<void> {
 }
 
 export async function refreshFromServer(): Promise<void> {
+  const localState = loadStateFromLocalStorage();
   const serverState = await fetchServerState();
+
   if (serverState) {
+    // If local state has newer timestamp, do not allow older server data to overwrite it
+    if (localState && localState.lastUpdated && serverState.lastUpdated && localState.lastUpdated > serverState.lastUpdated) {
+      applyState(localState);
+      saveServerState(localState);
+      return;
+    }
+
     applyState(serverState);
     if (typeof window !== "undefined") {
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(serverState)); } catch {}
     }
     return;
   }
-  const localState = loadStateFromLocalStorage();
+
   if (localState) {
     applyState(localState);
   }
@@ -392,7 +417,10 @@ export async function saveAndReload(): Promise<void> {
   await refreshFromServer();
 }
 
-const initialState = getDefaultState();
+const initialState = (typeof window !== "undefined" ? loadStateFromLocalStorage() : null) || getDefaultState();
+if (initialState.lastUpdated) {
+  stateLastUpdated = initialState.lastUpdated;
+}
 
 let blockReps: BlockRepresentative[] = initialState.blockReps;
 let candidates: Candidate[] = initialState.candidates;
@@ -548,6 +576,7 @@ export type ScheduleStatusCode =
   | "PORTAL_PAUSED"
   | "TIMED_OUT"
   | "STAGE_1_ENDED"
+  | "STAGE_2_ENDED"
   | "COMPLETED";
 
 export interface ScheduleStatusInfo {
@@ -687,7 +716,7 @@ export function getScheduleStatus(now: Date = new Date()): ScheduleStatusInfo {
   // Check after deadline / timeout
   if (endTimeMs && nowMs > endTimeMs) {
     return {
-      code: "TIMED_OUT",
+      code: isStage1 ? "STAGE_1_ENDED" : "STAGE_2_ENDED",
       stage,
       stageName,
       isOpen,
@@ -880,6 +909,46 @@ export const getLeaderboard = () => {
       return (b.stage1Votes || b.votes) - (a.stage1Votes || a.votes);
     });
     return { position: pos, candidates: sorted };
+  });
+};
+
+export type PositionWinner = {
+  position: string;
+  winner: Candidate | null;
+  runnerUp: Candidate | null;
+  totalVotes: number;
+  winnerPercentage: number;
+  isUncontested?: boolean;
+};
+
+export const getElectionWinners = (): PositionWinner[] => {
+  const grouped = getCandidatesByPosition();
+  return positions.map(pos => {
+    const list = grouped[pos] || [];
+    const getVotes = (c: Candidate) =>
+      c.stage2Votes !== undefined && c.stage2Votes > 0
+        ? c.stage2Votes
+        : typeof c.votes === "number"
+        ? c.votes
+        : 0;
+
+    const sorted = [...list].sort((a, b) => getVotes(b) - getVotes(a));
+    const totalVotes = list.reduce((sum, c) => sum + getVotes(c), 0);
+
+    const winner = sorted[0] && getVotes(sorted[0]) > 0 ? sorted[0] : (sorted[0] || null);
+    const runnerUp = sorted[1] && getVotes(sorted[1]) > 0 ? sorted[1] : null;
+
+    const winnerVotes = winner ? getVotes(winner) : 0;
+    const winnerPercentage = totalVotes > 0 ? Math.round((winnerVotes / totalVotes) * 100) : (winner ? 100 : 0);
+
+    return {
+      position: pos,
+      winner,
+      runnerUp,
+      totalVotes,
+      winnerPercentage,
+      isUncontested: sorted.length <= 1,
+    };
   });
 };
 

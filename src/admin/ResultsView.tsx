@@ -87,7 +87,9 @@ export default function ResultsView() {
   };
 
   const isFinalStage = settings.currentStage === "STAGE_2_FINAL" || settings.currentStage === "COMPLETED";
-  const isStage1Concluded = scheduleStatus.code === "TIMED_OUT" || scheduleStatus.code === "STAGE_1_ENDED";
+  const isStage1Concluded =
+    (settings.currentStage === "STAGE_1_NOMINATION" && (scheduleStatus.code === "TIMED_OUT" || scheduleStatus.code === "STAGE_1_ENDED")) ||
+    scheduleStatus.code === "STAGE_1_ENDED";
   const hasCandidates = leaderboard.some(l => l.candidates.length > 0);
   const timeUntilStart = getTimeUnits(scheduleStatus.msUntilStart);
   const timeUntilEnd = getTimeUnits(scheduleStatus.msUntilEnd);

@@ -81,7 +81,9 @@ export default async function handler(req: IncomingMessage & { body?: any; metho
     }
 
     if (body) {
-      inMemoryData = body;
+      if (!inMemoryData || !inMemoryData.lastUpdated || !body.lastUpdated || body.lastUpdated >= inMemoryData.lastUpdated) {
+        inMemoryData = body;
+      }
     }
 
     if (kvUrl && kvToken && body) {
