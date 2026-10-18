@@ -19,7 +19,8 @@ import {
   COURSES,
   YEAR_LEVELS,
   saveAndReload,
-  refreshFromServer
+  refreshFromServer,
+  subscribeToStore
 } from "../data/store";
 import type { BlockRepresentative } from "../data/store";
 import Avatar from "../components/Avatar";
@@ -50,7 +51,15 @@ export default function BlockRepsView() {
   };
 
   useEffect(() => {
-    refreshFromServer().then(() => reload());
+    reload();
+    const unsubscribe = subscribeToStore(reload);
+    const iv = setInterval(() => {
+      refreshFromServer().then(reload).catch(() => {});
+    }, 1500);
+    return () => {
+      unsubscribe();
+      clearInterval(iv);
+    };
   }, []);
 
   const openAdd = () => {

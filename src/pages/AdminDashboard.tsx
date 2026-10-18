@@ -27,6 +27,8 @@ const PAGE_COMPONENTS: Record<string, React.ComponentType> = {
   audit: AuditLogsView,
 };
 
+import { refreshFromServer } from "../data/store";
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [activePage, setActivePage] = useState(() => sessionStorage.getItem("cems_admin_page") || "dashboard");
@@ -36,6 +38,10 @@ export default function AdminDashboard() {
     if (!sessionStorage.getItem("cems_admin")) {
       navigate("/admin/login");
     }
+    const iv = setInterval(() => {
+      refreshFromServer().catch(() => {});
+    }, 1500);
+    return () => clearInterval(iv);
   }, [navigate]);
 
   const navigateTo = (page: string) => {

@@ -251,11 +251,66 @@ function loadStateFromLocalStorage(): PersistedState | null {
   }
 }
 
+type StoreListener = () => void;
+const storeListeners = new Set<StoreListener>();
+
+export function subscribeToStore(listener: StoreListener): () => void {
+  storeListeners.add(listener);
+  return () => {
+    storeListeners.delete(listener);
+  };
+}
+
+export function notifyStoreListeners() {
+  storeListeners.forEach(fn => {
+    try { fn(); } catch (e) { console.error("Store listener error:", e); }
+  });
+
+  if (typeof window !== "undefined") {
+    try {
+      window.dispatchEvent(new CustomEvent("cems:store_update", { detail: { lastUpdated: stateLastUpdated } }));
+    } catch {}
+
+    try {
+      if ("BroadcastChannel" in window) {
+        const bc = new BroadcastChannel("cems_sync_channel");
+        bc.postMessage({ type: "SYNC", lastUpdated: stateLastUpdated });
+        bc.close();
+      }
+    } catch {}
+  }
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (!e.key || e.key.includes("cems_election")) {
+      const local = loadStateFromLocalStorage();
+      if (local) {
+        applyState(local, true);
+      }
+    }
+  });
+
+  if ("BroadcastChannel" in window) {
+    try {
+      const bc = new BroadcastChannel("cems_sync_channel");
+      bc.onmessage = (event) => {
+        if (event.data?.type === "SYNC") {
+          const local = loadStateFromLocalStorage();
+          if (local && (!local.lastUpdated || local.lastUpdated >= stateLastUpdated)) {
+            applyState(local, true);
+          }
+        }
+      };
+    } catch {}
+  }
+}
+
 function getStateSnapshot(): PersistedState {
   return { blockReps, candidates, participants, votes, auditLogs, electionSettings, positions, adminUsers, lastUpdated: stateLastUpdated };
 }
 
-function applyState(state: PersistedState) {
+function applyState(state: PersistedState, emit = true) {
   blockReps = state.blockReps;
   candidates = state.candidates;
   participants = state.participants;
@@ -266,6 +321,9 @@ function applyState(state: PersistedState) {
   adminUsers = state.adminUsers ?? DEFAULT_ADMIN_USERS.map(u => ({ ...u }));
   if (typeof state.lastUpdated === "number" && state.lastUpdated > 0) {
     stateLastUpdated = state.lastUpdated;
+  }
+  if (emit) {
+    notifyStoreListeners();
   }
 }
 
@@ -305,6 +363,7 @@ function persistState() {
       // ignore storage quota error
     }
   }
+  notifyStoreListeners();
   persistQueue = persistQueue.then(() => saveServerState(state));
 }
 
@@ -378,11 +437,16 @@ export async function refreshFromServer(): Promise<void> {
   const serverState = await fetchServerState();
 
   if (serverState) {
-    // If local state has newer timestamp, do not allow older server data to overwrite it
-    if (localState && localState.lastUpdated && serverState.lastUpdated && localState.lastUpdated > serverState.lastUpdated) {
-      applyState(localState);
-      saveServerState(localState);
-      return;
+    if (serverState.lastUpdated) {
+      if (stateLastUpdated && serverState.lastUpdated === stateLastUpdated) {
+        return;
+      }
+      // If local state has strictly newer timestamp, do not allow older server data to overwrite it
+      if (localState && localState.lastUpdated && localState.lastUpdated > serverState.lastUpdated) {
+        applyState(localState);
+        saveServerState(localState);
+        return;
+      }
     }
 
     applyState(serverState);
@@ -392,7 +456,7 @@ export async function refreshFromServer(): Promise<void> {
     return;
   }
 
-  if (localState) {
+  if (localState && (!stateLastUpdated || (localState.lastUpdated && localState.lastUpdated > stateLastUpdated))) {
     applyState(localState);
   }
 }
@@ -611,7 +675,154 @@ export function formatDateTimeNice(isoOrDateStr?: string): string {
   });
 }
 
+// Stage & Transition Mutations
+export const setElectionStage = (stage: ElectionStage) => {
+  electionSettings.currentStage = stage;
+  if (stage === "STAGE_1_NOMINATION") {
+    electionSettings.startDate = electionSettings.stage1StartDate;
+    electionSettings.endDate = electionSettings.stage1EndDate;
+  } else if (stage === "STAGE_2_FINAL") {
+    electionSettings.startDate = electionSettings.stage2StartDate;
+    electionSettings.endDate = electionSettings.stage2EndDate;
+  }
+  auditLogs.unshift({
+    id: `a${Date.now()}`,
+    action: "Parliamentary Stage Changed",
+    performedBy: "admin",
+    details: `Election stage moved to ${stage}`,
+    timestamp: new Date().toISOString(),
+  });
+  persistState();
+};
+
+export const advanceStage1Winners = (topN = 2) => {
+  electionSettings.topFinalistsCount = topN;
+
+  // Make sure all block reps voted in Stage 1 are officially in candidates pool
+  positions.forEach(pos => {
+    // Ensure every registered block rep has a candidate record for this position
+    blockReps.forEach(rep => {
+      let existing = candidates.find(c => (c.blockRepId === rep.id || c.name.toLowerCase() === rep.name.toLowerCase()) && c.position === pos);
+      if (!existing) {
+        existing = {
+          id: `c_${rep.id}_${pos.replace(/[^a-zA-Z0-9]/g, "_")}`,
+          name: rep.name,
+          position: pos,
+          partyList: rep.blockOffice || "Block Representative",
+          photo: rep.photo && !rep.photo.includes("pravatar.cc") ? rep.photo : "",
+          course: rep.course,
+          year: rep.year,
+          block: rep.block,
+          blockOffice: rep.blockOffice || "Block Representative",
+          blockRepId: rep.id,
+          votes: 0,
+          stage1Votes: 0,
+          stage2Votes: 0,
+          isFinalist: false,
+        };
+        candidates.push(existing);
+      }
+    });
+
+    // Find all candidates and block reps with stage 1 votes for this position
+    const list = [...candidates.filter(c => c.position === pos)].sort((a, b) => (b.stage1Votes || b.votes) - (a.stage1Votes || a.votes));
+
+    list.forEach((c, index) => {
+      const idx = candidates.findIndex(cand => cand.id === c.id);
+      if (idx !== -1) {
+        candidates[idx].isFinalist = index < topN;
+      }
+    });
+  });
+
+  // Reset participant voting status for Stage 2 so voters can vote on Stage 2 Final
+  participants.forEach(p => {
+    p.hasVotedStage2 = false;
+    p.hasVoted = false;
+  });
+
+  electionSettings.currentStage = "STAGE_2_FINAL";
+  electionSettings.startDate = electionSettings.stage2StartDate || new Date().toISOString().substring(0, 16);
+  electionSettings.endDate = electionSettings.stage2EndDate || new Date(Date.now() + 86400000).toISOString().substring(0, 16);
+
+  auditLogs.unshift({
+    id: `a${Date.now()}`,
+    action: "Stage 1 Winners Advanced to CSG Candidates",
+    performedBy: "admin",
+    details: `Stage 1 votes tallied! Winning Block Representatives per position have automatically advanced into official CSG Candidates for Stage 2 Final Election.`,
+    timestamp: new Date().toISOString(),
+  });
+  persistState();
+};
+
+export const checkAutoScheduleTransitions = (now: Date = new Date()): boolean => {
+  const nowMs = now.getTime();
+  const stage = electionSettings.currentStage;
+  let changed = false;
+
+  // 1. Stage 0 -> Stage 1: Auto-start if stage1StartDate has arrived
+  if (stage === "STAGE_0_ROSTER" && electionSettings.stage1StartDate) {
+    const s1Start = new Date(electionSettings.stage1StartDate).getTime();
+    if (!isNaN(s1Start) && nowMs >= s1Start) {
+      setElectionStage("STAGE_1_NOMINATION");
+      electionSettings.isOpen = true;
+      persistState();
+      changed = true;
+    }
+  }
+
+  // 2. Stage 1 -> Stage 2: Automatic Proceed if stage1EndDate has passed and stage2StartDate is scheduled
+  // OR if nowMs >= stage2StartDate and stage is still STAGE_1_NOMINATION or STAGE_1_ENDED
+  if ((electionSettings.currentStage === "STAGE_1_NOMINATION" || electionSettings.currentStage === "STAGE_1_ENDED") && electionSettings.stage2StartDate) {
+    const s1End = electionSettings.stage1EndDate ? new Date(electionSettings.stage1EndDate).getTime() : 0;
+    const s2Start = new Date(electionSettings.stage2StartDate).getTime();
+
+    // Proceed if Stage 1 ended according to schedule OR if Stage 2 scheduled start has arrived
+    if ((s1End > 0 && nowMs >= s1End) || (!isNaN(s2Start) && nowMs >= s2Start)) {
+      advanceStage1Winners(electionSettings.topFinalistsCount || 2);
+      auditLogs.unshift({
+        id: `a${Date.now()}`,
+        action: "Automatic Stage 2 Advancement",
+        performedBy: "system_scheduler",
+        details: `Stage 1 voting deadline passed. System automatically promoted top ${electionSettings.topFinalistsCount || 2} candidates and transitioned to Stage 2 Final.`,
+        timestamp: new Date().toISOString(),
+      });
+      persistState();
+      changed = true;
+    }
+  }
+
+  // 3. Stage 2 -> COMPLETED: Auto-complete if stage2EndDate has passed
+  if (electionSettings.currentStage === "STAGE_2_FINAL" && electionSettings.stage2EndDate) {
+    const s2End = new Date(electionSettings.stage2EndDate).getTime();
+    if (!isNaN(s2End) && nowMs >= s2End) {
+      setElectionStage("COMPLETED");
+      electionSettings.isOpen = false;
+      auditLogs.unshift({
+        id: `a${Date.now()}`,
+        action: "Automatic Election Concluded",
+        performedBy: "system_scheduler",
+        details: `Stage 2 voting schedule deadline passed. Election officially concluded and winners proclaimed.`,
+        timestamp: new Date().toISOString(),
+      });
+      persistState();
+      changed = true;
+    }
+  }
+
+  return changed;
+};
+
+if (typeof window !== "undefined") {
+  // Global periodic background sync and schedule transition evaluator (runs every 1.5s)
+  setInterval(() => {
+    checkAutoScheduleTransitions();
+    refreshFromServer().catch(() => {});
+  }, 1500);
+}
+
 export function getScheduleStatus(now: Date = new Date()): ScheduleStatusInfo {
+  checkAutoScheduleTransitions(now);
   const stage = electionSettings.currentStage;
   const nowMs = now.getTime();
   const isOpen = !!electionSettings.isOpen;
@@ -1176,86 +1387,6 @@ export const deleteCandidate = (id: string) => {
   persistState();
 };
 
-// Stage & Transition Mutations
-export const setElectionStage = (stage: ElectionStage) => {
-  electionSettings.currentStage = stage;
-  if (stage === "STAGE_1_NOMINATION") {
-    electionSettings.startDate = electionSettings.stage1StartDate;
-    electionSettings.endDate = electionSettings.stage1EndDate;
-  } else if (stage === "STAGE_2_FINAL") {
-    electionSettings.startDate = electionSettings.stage2StartDate;
-    electionSettings.endDate = electionSettings.stage2EndDate;
-  }
-  auditLogs.unshift({
-    id: `a${Date.now()}`,
-    action: "Parliamentary Stage Changed",
-    performedBy: "admin",
-    details: `Election stage moved to ${stage}`,
-    timestamp: new Date().toISOString(),
-  });
-  persistState();
-};
-
-export const advanceStage1Winners = (topN = 2) => {
-  electionSettings.topFinalistsCount = topN;
-
-  // Make sure all block reps voted in Stage 1 are officially in candidates pool
-  positions.forEach(pos => {
-    // Ensure every registered block rep has a candidate record for this position
-    blockReps.forEach(rep => {
-      let existing = candidates.find(c => (c.blockRepId === rep.id || c.name.toLowerCase() === rep.name.toLowerCase()) && c.position === pos);
-      if (!existing) {
-        existing = {
-          id: `c_${rep.id}_${pos.replace(/[^a-zA-Z0-9]/g, "_")}`,
-          name: rep.name,
-          position: pos,
-          partyList: rep.blockOffice || "Block Representative",
-          photo: rep.photo && !rep.photo.includes("pravatar.cc") ? rep.photo : "",
-          course: rep.course,
-          year: rep.year,
-          block: rep.block,
-          blockOffice: rep.blockOffice || "Block Representative",
-          blockRepId: rep.id,
-          votes: 0,
-          stage1Votes: 0,
-          stage2Votes: 0,
-          isFinalist: false,
-        };
-        candidates.push(existing);
-      }
-    });
-
-    // Find all candidates and block reps with stage 1 votes for this position
-    const list = [...candidates.filter(c => c.position === pos)].sort((a, b) => (b.stage1Votes || b.votes) - (a.stage1Votes || a.votes));
-
-    list.forEach((c, index) => {
-      const idx = candidates.findIndex(cand => cand.id === c.id);
-      if (idx !== -1) {
-        candidates[idx].isFinalist = index < topN;
-      }
-    });
-  });
-
-  // Reset participant voting status for Stage 2 so voters can vote on Stage 2 Final
-  participants.forEach(p => {
-    p.hasVotedStage2 = false;
-    p.hasVoted = false;
-  });
-
-  electionSettings.currentStage = "STAGE_2_FINAL";
-  electionSettings.startDate = electionSettings.stage2StartDate || new Date().toISOString().substring(0, 16);
-  electionSettings.endDate = electionSettings.stage2EndDate || new Date(Date.now() + 86400000).toISOString().substring(0, 16);
-
-  auditLogs.unshift({
-    id: `a${Date.now()}`,
-    action: "Stage 1 Winners Advanced to CSG Candidates",
-    performedBy: "admin",
-    details: `Stage 1 votes tallied! Winning Block Representatives per position have automatically advanced into official CSG Candidates for Stage 2 Final Election.`,
-    timestamp: new Date().toISOString(),
-  });
-  persistState();
-};
-
 export const toggleCandidateFinalist = (candidateId: string) => {
   const candidate = candidates.find(c => c.id === candidateId);
   if (candidate) {
@@ -1300,9 +1431,9 @@ export const registerOrVerifyStudent = (data: {
   participants.push(newParticipant);
   auditLogs.unshift({
     id: `a${Date.now()}`,
-    action: "Student Self-Registered via ID Scan",
+    action: "Student Registered via Portal",
     performedBy: "voter_portal",
-    details: `Student verified & registered via PCC ID: ${newParticipant.name} (${newParticipant.studentId}) - ${newParticipant.course}`,
+    details: `Student registered via Student Portal: ${newParticipant.name} (${newParticipant.studentId}) - ${newParticipant.course}`,
     timestamp: new Date().toISOString(),
   });
   persistState();
@@ -1456,6 +1587,7 @@ export const updateSettings = (updates: Partial<ElectionSettings>) => {
   electionSettings = { ...electionSettings, ...updates };
   auditLogs.unshift({ id: `a${Date.now()}`, action: "Settings Updated", performedBy: "admin", details: `Election settings & schedules updated`, timestamp: new Date().toISOString() });
   persistState();
+  checkAutoScheduleTransitions();
 };
 
 export const toggleElection = () => {

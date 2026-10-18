@@ -12,6 +12,7 @@ import {
   toggleCandidateFinalist,
   refreshFromServer,
   saveAndReload,
+  subscribeToStore,
   COURSES,
   BLOCK_OFFICES,
   candidateQualificationLabel,
@@ -55,7 +56,17 @@ export default function CandidatesView() {
     reloadList();
   };
 
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    refresh();
+    const unsubscribe = subscribeToStore(reloadList);
+    const iv = setInterval(() => {
+      refreshFromServer().then(reloadList).catch(() => {});
+    }, 1500);
+    return () => {
+      unsubscribe();
+      clearInterval(iv);
+    };
+  }, []);
 
   const openAdd = (position?: string) => {
     const latest = getPositions();

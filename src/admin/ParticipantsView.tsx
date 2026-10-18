@@ -9,7 +9,8 @@ import {
   COURSES,
   YEAR_LEVELS,
   saveAndReload,
-  refreshFromServer
+  refreshFromServer,
+  subscribeToStore
 } from "../data/store";
 import type { Participant } from "../data/store";
 
@@ -30,7 +31,15 @@ export default function ParticipantsView() {
   };
 
   useEffect(() => {
-    refreshFromServer().then(() => reload());
+    reload();
+    const unsubscribe = subscribeToStore(reload);
+    const iv = setInterval(() => {
+      refreshFromServer().then(reload).catch(() => {});
+    }, 1500);
+    return () => {
+      unsubscribe();
+      clearInterval(iv);
+    };
   }, []);
 
   const showToast = (type: "success" | "error", message: string) => {

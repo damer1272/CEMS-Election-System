@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getVotes, getCandidates, getParticipants, getPositions } from "../data/store";
+import { getVotes, getCandidates, getParticipants, getPositions, refreshFromServer, subscribeToStore } from "../data/store";
 import type { VoteRecord, Candidate, Participant } from "../data/store";
 import { Download, Search, CheckCircle2 } from "lucide-react";
 
@@ -19,8 +19,14 @@ export default function VotesView() {
       setPositions(getPositions());
     };
     refresh();
-    const iv = setInterval(refresh, 3000);
-    return () => clearInterval(iv);
+    const unsubscribe = subscribeToStore(refresh);
+    const iv = setInterval(() => {
+      refreshFromServer().then(refresh).catch(() => {});
+    }, 1500);
+    return () => {
+      unsubscribe();
+      clearInterval(iv);
+    };
   }, []);
 
   const getCandidateName = (id: string) => candidates.find(c => c.id === id)?.name ?? id;
@@ -59,7 +65,7 @@ export default function VotesView() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Official Vote Audit Trail</h1>
-          <p className="text-slate-500 text-sm mt-0.5">{votes.length} vote records · auto updates every 3s</p>
+          <p className="text-slate-500 text-sm mt-0.5">{votes.length} vote records · live real-time sync</p>
         </div>
         <button
           onClick={handleExportCSV}

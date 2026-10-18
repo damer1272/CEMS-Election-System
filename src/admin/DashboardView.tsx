@@ -3,7 +3,7 @@ import { Users, UserCheck, Clock, Award, TrendingUp, Sparkles, AlertCircle } fro
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import {
   getCandidates, getVotesCast, getTotalVoters,
-  getRemainingVoters, getAuditLogs, getLeaderboard, getSettings, refreshFromServer, getBlockReps
+  getRemainingVoters, getAuditLogs, getLeaderboard, getSettings, refreshFromServer, getBlockReps, subscribeToStore
 } from "../data/store";
 
 const CHART_COLORS = ["#233C4B", "#FF7D2D", "#FAC846", "#5F9B8C", "#A0C382", "#325368"];
@@ -24,11 +24,12 @@ export default function DashboardView() {
         candidates: getCandidates().length,
         blockReps: getBlockReps().length,
       });
-      setSettings(getSettings());
+      const currentSettings = getSettings();
+      setSettings(currentSettings);
       const lb = getLeaderboard();
       setChartData(lb.map(({ position, candidates }) => {
         const topCandidate = candidates[0];
-        const votes = (settings.currentStage === "STAGE_2_FINAL" || settings.currentStage === "COMPLETED")
+        const votes = (currentSettings.currentStage === "STAGE_2_FINAL" || currentSettings.currentStage === "COMPLETED")
           ? (topCandidate?.stage2Votes ?? topCandidate?.votes ?? 0)
           : (topCandidate?.stage1Votes ?? topCandidate?.votes ?? 0);
         return {
@@ -40,9 +41,13 @@ export default function DashboardView() {
       setActivity(getAuditLogs().slice(0, 8));
     };
     refresh();
-    const iv = setInterval(refresh, 3000);
-    return () => clearInterval(iv);
-  }, [settings.currentStage]);
+    const unsubscribe = subscribeToStore(refresh);
+    const iv = setInterval(refresh, 1500);
+    return () => {
+      unsubscribe();
+      clearInterval(iv);
+    };
+  }, []);
 
   const turnout = stats.total > 0 ? Math.round((stats.cast / stats.total) * 100) : 0;
 

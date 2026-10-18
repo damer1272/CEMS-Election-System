@@ -10,7 +10,8 @@ import {
   refreshFromServer,
   saveAndReload,
   candidateQualificationLabel,
-  formatDateTimeNice
+  formatDateTimeNice,
+  subscribeToStore
 } from "../data/store";
 import type { ScheduleStatusInfo, PositionFinalistsSummary } from "../data/store";
 import Avatar from "../components/Avatar";
@@ -68,8 +69,12 @@ export default function ResultsView() {
 
   useEffect(() => {
     reload();
+    const unsubscribe = subscribeToStore(reload);
     const iv = setInterval(reload, 1500);
-    return () => clearInterval(iv);
+    return () => {
+      unsubscribe();
+      clearInterval(iv);
+    };
   }, []);
 
   const handleAdvanceFinalists = async () => {

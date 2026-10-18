@@ -23,11 +23,13 @@ import {
   updatePositions,
   toggleElection,
   setElectionStage,
+  advanceStage1Winners,
   getCandidates,
   resetAllVotes,
   startFromBeginning,
   syncFromLocalStorage,
-  refreshFromServer
+  refreshFromServer,
+  subscribeToStore
 } from "../data/store";
 import type { ElectionSettings, ElectionStage } from "../data/store";
 
@@ -56,6 +58,12 @@ export default function SettingsView() {
     trySync();
     setForm(getSettings());
     setPositionList(getPositions());
+
+    const unsubscribe = subscribeToStore(() => {
+      setForm(getSettings());
+      setPositionList(getPositions());
+    });
+    return () => unsubscribe();
   }, []);
 
   if (!form) return null;
@@ -131,6 +139,56 @@ export default function SettingsView() {
       startDate: startStr,
       endDate: endStr,
     };
+    setForm(updated);
+    updateSettings(updated);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  };
+
+  const handleSetPresetStage2Now = () => {
+    const now = new Date();
+    const end = new Date(Date.now() + 3600000);
+    const nowStr = now.toISOString().substring(0, 16);
+    const endStr = end.toISOString().substring(0, 16);
+    const pastStart = new Date(Date.now() - 7200000).toISOString().substring(0, 16);
+    const pastEnd = new Date(Date.now() - 3600000).toISOString().substring(0, 16);
+    const updated = {
+      ...form,
+      currentStage: "STAGE_2_FINAL" as ElectionStage,
+      isOpen: true,
+      stage1StartDate: pastStart,
+      stage1EndDate: pastEnd,
+      stage2StartDate: nowStr,
+      stage2EndDate: endStr,
+      startDate: nowStr,
+      endDate: endStr,
+    };
+    advanceStage1Winners(form.topFinalistsCount || 2);
+    setForm(updated);
+    updateSettings(updated);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  };
+
+  const handleSetPresetStage2Countdown = () => {
+    const future = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes from now
+    const end = new Date(Date.now() + 60 * 60 * 1000);
+    const startStr = future.toISOString().substring(0, 16);
+    const endStr = end.toISOString().substring(0, 16);
+    const pastStart = new Date(Date.now() - 7200000).toISOString().substring(0, 16);
+    const pastEnd = new Date(Date.now() - 60000).toISOString().substring(0, 16);
+    const updated = {
+      ...form,
+      currentStage: "STAGE_2_FINAL" as ElectionStage,
+      isOpen: true,
+      stage1StartDate: pastStart,
+      stage1EndDate: pastEnd,
+      stage2StartDate: startStr,
+      stage2EndDate: endStr,
+      startDate: startStr,
+      endDate: endStr,
+    };
+    advanceStage1Winners(form.topFinalistsCount || 2);
     setForm(updated);
     updateSettings(updated);
     setSaved(true);
@@ -397,7 +455,7 @@ export default function SettingsView() {
               <p className="text-[11px] text-slate-500 leading-relaxed">
                 Instantly populate date and time triggers to demonstrate active voting, student portal countdowns, or finalist timeouts.
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
                 <button
                   type="button"
                   onClick={handleSetPresetStartNow}
@@ -410,14 +468,21 @@ export default function SettingsView() {
                   onClick={handleSetPresetCountdown}
                   className="py-2.5 px-3 bg-[#FAC846] hover:bg-[#F0BE3C] text-[#233C4B] text-xs font-bold rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  <span>⏳ 2-Min Countdown</span>
+                  <span>⏳ Stage 1 (2-Min)</span>
                 </button>
                 <button
                   type="button"
-                  onClick={handleSetPresetTimeout}
+                  onClick={handleSetPresetStage2Now}
+                  className="py-2.5 px-3 bg-[#5F9B8C] hover:bg-[#4E8376] text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <span>⚡ Auto Stage 2 Now</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSetPresetStage2Countdown}
                   className="py-2.5 px-3 bg-[#FF7D2D] hover:bg-[#EA6C1E] text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  <span>🏁 Stage 1 Timeout</span>
+                  <span>⏱️ Stage 2 (2-Min)</span>
                 </button>
               </div>
             </div>

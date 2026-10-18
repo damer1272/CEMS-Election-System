@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getAuditLogs } from "../data/store";
+import { getAuditLogs, refreshFromServer, subscribeToStore } from "../data/store";
 import type { AuditLog } from "../data/store";
 import { ClipboardList, Download, Search } from "lucide-react";
 
@@ -12,8 +12,12 @@ const ACTION_COLORS: Record<string, string> = {
   "Settings Updated": "bg-slate-100 text-slate-700 border-slate-200",
   "Parliamentary Stage Changed": "bg-[#233C4B] text-[#FAC846] border-[#FAC846]/30",
   "Advanced Top Candidates to Stage 2": "bg-[#A0C382]/25 text-[#233C4B] border-[#A0C382]/60",
+  "Stage 1 Winners Advanced to CSG Candidates": "bg-[#A0C382]/25 text-[#233C4B] border-[#A0C382]/60",
   "Block Representative Registered": "bg-[#233C4B]/10 text-[#233C4B] border-[#233C4B]/20",
   "Nominated to CSG Ballot": "bg-[#FF7D2D]/15 text-[#233C4B] border-[#FF7D2D]/30",
+  "Student Registered via Portal": "bg-[#5F9B8C]/20 text-[#233C4B] border-[#5F9B8C]/50",
+  "Automatic Stage 2 Advancement": "bg-[#FF7D2D]/20 text-[#233C4B] border-[#FF7D2D]/50",
+  "Automatic Election Concluded": "bg-[#A0C382]/25 text-[#233C4B] border-[#A0C382]/60",
 };
 
 export default function AuditLogsView() {
@@ -23,8 +27,14 @@ export default function AuditLogsView() {
   useEffect(() => {
     const refresh = () => setLogs(getAuditLogs());
     refresh();
-    const iv = setInterval(refresh, 3000);
-    return () => clearInterval(iv);
+    const unsubscribe = subscribeToStore(refresh);
+    const iv = setInterval(() => {
+      refreshFromServer().then(refresh).catch(() => {});
+    }, 1500);
+    return () => {
+      unsubscribe();
+      clearInterval(iv);
+    };
   }, []);
 
   const filtered = logs.filter(l =>
@@ -50,7 +60,7 @@ export default function AuditLogsView() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-[#233C4B]">Security & Parliamentary Audit Logs</h1>
-          <p className="text-slate-500 text-sm mt-0.5">{logs.length} immutable events recorded · auto refreshes every 3s</p>
+          <p className="text-slate-500 text-sm mt-0.5">{logs.length} immutable events recorded · live real-time sync</p>
         </div>
         <button
           onClick={handleExportCSV}

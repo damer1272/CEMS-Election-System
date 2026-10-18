@@ -11,6 +11,7 @@ import {
   getElectionWinners,
   refreshFromServer,
   candidateQualificationLabel,
+  subscribeToStore,
 } from "../data/store";
 import type { ElectionSettings, ScheduleStatusInfo, PositionFinalistsSummary, PositionWinner } from "../data/store";
 import AppLogo from "../components/AppLogo";
@@ -94,7 +95,9 @@ export default function UserDisplay() {
       setScheduleStatus(getScheduleStatus(currentNow));
     }, 1000);
 
-    const dataInterval = setInterval(reloadData, 2000);
+    const dataInterval = setInterval(reloadData, 1500);
+
+    const unsubscribe = subscribeToStore(reloadData);
 
     const handleStorage = (e: StorageEvent) => {
       if (!e.key || e.key.includes("cems_election")) {
@@ -106,6 +109,7 @@ export default function UserDisplay() {
     return () => {
       clearInterval(clockInterval);
       clearInterval(dataInterval);
+      unsubscribe();
       window.removeEventListener("storage", handleStorage);
     };
   }, []);
@@ -167,20 +171,6 @@ export default function UserDisplay() {
               <p className={`text-xs font-bold uppercase tracking-wider ${isDark ? "text-[#FAC846]" : "text-[#FF7D2D]"}`}>
                 {settings?.organization ?? "Pagadian Capitol College"}
               </p>
-              <span
-                className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 border ${
-                  isFinalConcluded
-                    ? isDark
-                      ? "bg-[#FAC846]/20 text-[#FAC846] border-[#FAC846]/40"
-                      : "bg-amber-100 text-amber-900 border-amber-300"
-                    : isDark
-                    ? "bg-[#233C4B] text-[#A0C382] border-[#5F9B8C]/40"
-                    : "bg-[#233C4B]/5 text-[#233C4B] border-[#233C4B]/15"
-                }`}
-              >
-                {isFinalConcluded ? <Trophy className="w-3 h-3 text-[#FAC846]" /> : <Sparkles className="w-3 h-3 text-[#FAC846]" />}
-                {getStageTag()}
-              </span>
             </div>
             <h1 className={`font-bold text-xl lg:text-2xl leading-tight mt-0.5 ${isDark ? "text-white" : "text-[#233C4B]"}`}>
               {isFinalConcluded
@@ -503,82 +493,115 @@ export default function UserDisplay() {
           ) : (
             /* Big Live Countdown Banner for Active Stages */
             <div
-              className={`rounded-2xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4 border shadow-sm transition-colors ${
-                isDark ? "bg-[#2A4555] border-[#3D6177]" : "bg-white border-slate-200"
+              className={`rounded-3xl p-6 lg:p-8 mb-6 border shadow-md transition-all ${
+                isDark
+                  ? "bg-gradient-to-r from-[#243A47] via-[#2A4555] to-[#1E323E] border-[#3D6177]"
+                  : "bg-gradient-to-r from-amber-50/40 via-white to-orange-50/30 border-slate-200"
               }`}
             >
-              <div className="flex items-center gap-3.5">
-                <div
-                  className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 border ${
-                    isDark ? "bg-[#FAC846]/15 border-[#FAC846]/30 text-[#FAC846]" : "bg-amber-50 border-amber-200 text-[#FF7D2D]"
-                  }`}
-                >
-                  <Clock className="w-6 h-6 animate-pulse" />
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                <div className="flex items-start sm:items-center gap-4">
+                  <div
+                    className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 border shadow-sm ${
+                      isDark ? "bg-[#FAC846]/15 border-[#FAC846]/30 text-[#FAC846]" : "bg-orange-50 border-orange-200 text-[#FF7D2D]"
+                    }`}
+                  >
+                    <Clock className="w-8 h-8 animate-pulse" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <span className={`text-sm font-extrabold uppercase tracking-wider ${isDark ? "text-[#FAC846]" : "text-[#FF7D2D]"}`}>
+                        {scheduleStatus.stageName}
+                      </span>
+                      <span
+                        className={`text-xs font-bold px-3 py-0.5 rounded-full border shadow-2xs ${
+                          scheduleStatus.code === "ACTIVE"
+                            ? isDark
+                              ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
+                              : "bg-emerald-50 text-emerald-800 border-emerald-300"
+                            : scheduleStatus.code === "NOT_YET_OPEN"
+                            ? isDark
+                              ? "bg-[#FAC846]/20 text-[#FAC846] border-[#FAC846]/40"
+                              : "bg-amber-50 text-amber-800 border-amber-300"
+                            : isDark
+                            ? "bg-slate-700 text-slate-300 border-slate-600"
+                            : "bg-slate-100 text-slate-700 border-slate-200"
+                        }`}
+                      >
+                        {scheduleStatus.code === "ACTIVE" ? "● Voting Open" : scheduleStatus.code === "NOT_YET_OPEN" ? "⏳ Scheduled" : "🏁 Closed"}
+                      </span>
+                    </div>
+                    <p className={`text-sm mt-1 font-medium ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                      {scheduleStatus.code === "NOT_YET_OPEN"
+                        ? `Voting officially opens on ${scheduleStatus.formattedStartTime}`
+                        : `Official Deadline: ${scheduleStatus.formattedEndTime}`}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? "text-[#FAC846]" : "text-[#FF7D2D]"}`}>
-                      {scheduleStatus.stageName}
-                    </span>
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                        scheduleStatus.code === "ACTIVE"
-                          ? isDark
-                            ? "bg-[#A0C382]/20 text-[#A0C382] border-[#A0C382]/40"
-                            : "bg-emerald-50 text-emerald-800 border-emerald-200"
-                          : scheduleStatus.code === "NOT_YET_OPEN"
-                          ? isDark
-                            ? "bg-[#FAC846]/20 text-[#FAC846] border-[#FAC846]/40"
-                            : "bg-amber-50 text-amber-800 border-amber-200"
-                          : isDark
-                          ? "bg-slate-700 text-slate-300 border-slate-600"
-                          : "bg-slate-100 text-slate-700 border-slate-200"
+
+                {/* Spectacular Big Digital Countdown Tiles */}
+                <div className="flex flex-col sm:items-end gap-1.5">
+                  <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                    {scheduleStatus.code === "NOT_YET_OPEN" ? "Polls Open In" : "Voting Closes In"}
+                  </span>
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    {/* Days (if > 0) */}
+                    {(scheduleStatus.code === "NOT_YET_OPEN" ? timeUntilStart.days : timeUntilEnd.days) > 0 && (
+                      <>
+                        <div
+                          className={`flex flex-col items-center justify-center min-w-[70px] sm:min-w-[85px] py-2 px-3 rounded-2xl border shadow-sm ${
+                            isDark ? "bg-[#1B2D38] border-[#385466]" : "bg-white border-slate-300 shadow-sm"
+                          }`}
+                        >
+                          <span className={`text-2xl sm:text-4xl lg:text-5xl font-mono font-black tracking-tight leading-none ${isDark ? "text-white" : "text-[#233C4B]"}`}>
+                            {String(scheduleStatus.code === "NOT_YET_OPEN" ? timeUntilStart.days : timeUntilEnd.days).padStart(2, "0")}
+                          </span>
+                          <span className="text-[10px] font-bold uppercase tracking-widest mt-1 text-slate-400">Days</span>
+                        </div>
+                        <span className={`text-2xl sm:text-3xl font-mono font-bold ${isDark ? "text-slate-500" : "text-slate-400"}`}>:</span>
+                      </>
+                    )}
+
+                    {/* Hours */}
+                    <div
+                      className={`flex flex-col items-center justify-center min-w-[70px] sm:min-w-[85px] py-2 px-3 rounded-2xl border shadow-sm ${
+                        isDark ? "bg-[#1B2D38] border-[#385466]" : "bg-white border-slate-300 shadow-sm"
                       }`}
                     >
-                      {scheduleStatus.code === "ACTIVE" ? "● Voting Open" : scheduleStatus.code === "NOT_YET_OPEN" ? "⏳ Scheduled" : "🏁 Closed"}
-                    </span>
-                  </div>
-                  <p className={`text-xs mt-0.5 font-medium ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                    {scheduleStatus.code === "NOT_YET_OPEN"
-                      ? `Opens officially on ${scheduleStatus.formattedStartTime}`
-                      : `Official Deadline: ${scheduleStatus.formattedEndTime}`}
-                  </p>
-                </div>
-              </div>
+                      <span className={`text-2xl sm:text-4xl lg:text-5xl font-mono font-black tracking-tight leading-none ${isDark ? "text-white" : "text-[#233C4B]"}`}>
+                        {String(scheduleStatus.code === "NOT_YET_OPEN" ? timeUntilStart.hours : timeUntilEnd.hours).padStart(2, "0")}
+                      </span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest mt-1 text-slate-400">Hours</span>
+                    </div>
 
-              {/* Big Digits Clock */}
-              <div
-                className={`flex items-center gap-2 border rounded-xl px-4 py-2 ${
-                  isDark ? "bg-[#1F333F] border-[#344E5E]" : "bg-slate-50 border-slate-200"
-                }`}
-              >
-                <span className={`text-xs font-semibold mr-1 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-                  {scheduleStatus.code === "NOT_YET_OPEN" ? "Opens in:" : "Time Remaining:"}
-                </span>
-                <div className={`flex items-center gap-1 font-mono text-sm sm:text-base font-bold ${isDark ? "text-[#FAC846]" : "text-[#FF7D2D]"}`}>
-                  <span
-                    className={`px-2.5 py-1 rounded shadow-xs ${
-                      isDark ? "bg-[#2A4555] text-white" : "bg-white text-[#233C4B] border border-slate-200"
-                    }`}
-                  >
-                    {String(scheduleStatus.code === "NOT_YET_OPEN" ? timeUntilStart.hours : timeUntilEnd.hours).padStart(2, "0")}h
-                  </span>
-                  <span>:</span>
-                  <span
-                    className={`px-2.5 py-1 rounded shadow-xs ${
-                      isDark ? "bg-[#2A4555] text-white" : "bg-white text-[#233C4B] border border-slate-200"
-                    }`}
-                  >
-                    {String(scheduleStatus.code === "NOT_YET_OPEN" ? timeUntilStart.minutes : timeUntilEnd.minutes).padStart(2, "0")}m
-                  </span>
-                  <span>:</span>
-                  <span
-                    className={`px-2.5 py-1 rounded shadow-xs animate-pulse ${
-                      isDark ? "bg-[#2A4555] text-[#FAC846]" : "bg-white text-[#FF7D2D] border border-slate-200"
-                    }`}
-                  >
-                    {String(scheduleStatus.code === "NOT_YET_OPEN" ? timeUntilStart.seconds : timeUntilEnd.seconds).padStart(2, "0")}s
-                  </span>
+                    <span className={`text-2xl sm:text-3xl font-mono font-bold animate-pulse ${isDark ? "text-[#FAC846]" : "text-[#FF7D2D]"}`}>:</span>
+
+                    {/* Minutes */}
+                    <div
+                      className={`flex flex-col items-center justify-center min-w-[70px] sm:min-w-[85px] py-2 px-3 rounded-2xl border shadow-sm ${
+                        isDark ? "bg-[#1B2D38] border-[#385466]" : "bg-white border-slate-300 shadow-sm"
+                      }`}
+                    >
+                      <span className={`text-2xl sm:text-4xl lg:text-5xl font-mono font-black tracking-tight leading-none ${isDark ? "text-white" : "text-[#233C4B]"}`}>
+                        {String(scheduleStatus.code === "NOT_YET_OPEN" ? timeUntilStart.minutes : timeUntilEnd.minutes).padStart(2, "0")}
+                      </span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest mt-1 text-slate-400">Mins</span>
+                    </div>
+
+                    <span className={`text-2xl sm:text-3xl font-mono font-bold animate-pulse ${isDark ? "text-[#FAC846]" : "text-[#FF7D2D]"}`}>:</span>
+
+                    {/* Seconds */}
+                    <div
+                      className={`flex flex-col items-center justify-center min-w-[70px] sm:min-w-[85px] py-2 px-3 rounded-2xl border shadow-sm ${
+                        isDark ? "bg-[#1B2D38] border-[#FAC846]/40" : "bg-white border-[#FF7D2D]/40 ring-2 ring-[#FF7D2D]/10"
+                      }`}
+                    >
+                      <span className={`text-2xl sm:text-4xl lg:text-5xl font-mono font-black tracking-tight leading-none ${isDark ? "text-[#FAC846]" : "text-[#FF7D2D]"}`}>
+                        {String(scheduleStatus.code === "NOT_YET_OPEN" ? timeUntilStart.seconds : timeUntilEnd.seconds).padStart(2, "0")}
+                      </span>
+                      <span className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${isDark ? "text-[#FAC846]" : "text-[#FF7D2D]"}`}>Secs</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

@@ -37,6 +37,7 @@ import {
   refreshFromServer,
   candidateQualificationLabel,
   formatDateTimeNice,
+  subscribeToStore,
   COURSES,
   YEAR_LEVELS
 } from "../data/store";
@@ -112,7 +113,9 @@ export default function VotingPage() {
 
     const pollServer = setInterval(() => {
       reloadData();
-    }, 2500);
+    }, 1500);
+
+    const unsubscribe = subscribeToStore(reloadData);
 
     const handleStorage = (e: StorageEvent) => {
       if (!e.key || e.key.includes("cems_election")) {
@@ -124,6 +127,7 @@ export default function VotingPage() {
     return () => {
       clearInterval(iv);
       clearInterval(pollServer);
+      unsubscribe();
       window.removeEventListener("storage", handleStorage);
     };
   }, []);
