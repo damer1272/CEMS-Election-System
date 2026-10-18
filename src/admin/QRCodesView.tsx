@@ -34,11 +34,20 @@ export default function QRCodesView() {
   const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const origin = window.location.origin;
+      const isLocal = /localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+/i.test(origin);
+      if (!isLocal && origin.startsWith("http")) {
+        setCustomUrl(origin);
+        setVotingUrl(`${origin}/vote`);
+        setDisplayUrl(`${origin}/`);
+        return;
+      }
+    }
     const loadNet = async () => {
       const net = await fetchNetworkInfo();
       if (net && net.localUrl) {
         setDetectedLocalUrl(net.localUrl);
-        // If current URL is empty or localhost, auto-suggest the local IP
         const current = getSettings().publicUrl;
         if (!current || isLocalhostUrl(current)) {
           setCustomUrl(net.localUrl);

@@ -442,6 +442,14 @@ export const deleteAdminUser = (id: string) => {
 };
 
 export const getPublicBaseUrl = () => {
+  if (typeof window !== "undefined") {
+    const origin = window.location.origin;
+    const isLocal = /localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+/i.test(origin);
+    // If the browser is on a public domain like Vercel (https://...):
+    if (!isLocal && origin.startsWith("http")) {
+      return origin;
+    }
+  }
   const configured = electionSettings.publicUrl?.trim().replace(/\/$/, "");
   if (configured) return configured;
   if (typeof window !== "undefined") return window.location.origin;
