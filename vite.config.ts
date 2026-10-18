@@ -2,11 +2,26 @@ import { defineConfig, type HtmlTagDescriptor, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
-
-import siteConfiguration from './.figma/make/site.json'
+import fs from 'node:fs'
 import { electionApiPlugin } from './vite-election-api'
 
 const isFigmaSandbox = process.env.FIGMA === '1' || process.env.FIGMA === 'true'
+
+let siteConfiguration: any = {
+  title: "CEMS - PCC Election System",
+  description: "Pagadian Capitol College Central Student Government election management with live results, secure voting, and admin tools.",
+  icons: { icon: "/logo.png" },
+  robots: { index: false },
+}
+
+try {
+  const siteConfigPath = path.resolve(__dirname, './.figma/make/site.json')
+  if (fs.existsSync(siteConfigPath)) {
+    siteConfiguration = JSON.parse(fs.readFileSync(siteConfigPath, 'utf-8'))
+  }
+} catch {
+  // Fallback to defaults
+}
 
 // Vite config — https://vitejs.dev/config/
 export default defineConfig({

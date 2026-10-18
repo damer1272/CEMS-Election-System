@@ -1,0 +1,14 @@
+{
+  "title": "CEMS - PCC Election System",
+  "description": "Pagadian Capitol College Central Student Government election management with live results, secure voting, and admin tools.",
+  "icons": {
+    "icon": "/logo.png"
+  },
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
