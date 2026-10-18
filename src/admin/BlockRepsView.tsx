@@ -145,11 +145,11 @@ export default function BlockRepsView() {
   };
 
   const handleResetStep1 = async () => {
-    if (!confirm("Reset the election back to Step 1? This resets the stage to Stage 1 Primary Nomination, clears all votes, and sets schedule start time to right now.")) return;
+    if (!confirm("Reset back to Step 1 (Stage 0: Roster Entry)? This clears all votes and leaves schedules empty so you can manually set them in Settings.")) return;
     resetToStep1BlockReps(false);
     await saveAndReload();
     reload();
-    setNotice("Election reset to Step 1 (Stage 1 Primary Nomination)!");
+    setNotice("Election reset to Step 1 (Stage 0: Roster Entry)! Schedules are cleared for manual setup.");
     setTimeout(() => setNotice(""), 3500);
   };
 
@@ -298,7 +298,7 @@ export default function BlockRepsView() {
             </span>
           </div>
           <p className="text-slate-500 text-xs mt-1">
-            Current Stage: <strong className="text-[#233C4B]">{settings.currentStage}</strong> • Stage 1 Start: <strong>{formatDateTimeNice(settings.stage1StartDate)}</strong> • Deadline: <strong>{formatDateTimeNice(settings.stage1EndDate)}</strong>
+            Current Stage: <strong className="text-[#233C4B]">{settings.currentStage === "STAGE_0_ROSTER" ? "Stage 0: Roster Entry" : settings.currentStage}</strong> • Stage 1 Start: <strong>{settings.stage1StartDate ? formatDateTimeNice(settings.stage1StartDate) : "Not scheduled yet (Set in Settings)"}</strong> • Deadline: <strong>{settings.stage1EndDate ? formatDateTimeNice(settings.stage1EndDate) : "Not scheduled"}</strong>
           </p>
           {notice && (
             <p className="text-[#5F9B8C] font-semibold text-xs mt-1.5 animate-pulse">{notice}</p>

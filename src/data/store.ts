@@ -130,17 +130,17 @@ const DEFAULT_AUDIT_LOGS: AuditLog[] = [
 const DEFAULT_SETTINGS: ElectionSettings = {
   title: "CSG Parliamentary Election 2026–2027",
   organization: "Pagadian Capitol College, Inc.",
-  startDate: new Date().toISOString().substring(0, 16),
-  endDate: new Date(Date.now() + 86400000).toISOString().substring(0, 16),
-  isOpen: true,
+  startDate: "",
+  endDate: "",
+  isOpen: false,
   allowMultipleDevices: false,
   publicUrl: "",
 
-  currentStage: "STAGE_1_NOMINATION",
-  stage1StartDate: new Date().toISOString().substring(0, 16),
-  stage1EndDate: new Date(Date.now() + 86400000).toISOString().substring(0, 16),
-  stage2StartDate: new Date(Date.now() + 86400000).toISOString().substring(0, 16),
-  stage2EndDate: new Date(Date.now() + 172800000).toISOString().substring(0, 16),
+  currentStage: "STAGE_0_ROSTER",
+  stage1StartDate: "",
+  stage1EndDate: "",
+  stage2StartDate: "",
+  stage2EndDate: "",
   topFinalistsCount: 2,
 };
 
@@ -833,24 +833,23 @@ export const resetToStep1BlockReps = (fillSampleReps = false) => {
   // Reset candidates stage votes
   candidates = [];
 
-  const nowStr = new Date().toISOString().substring(0, 16);
-  const endStr = new Date(Date.now() + 3600000).toISOString().substring(0, 16); // 1 hour from now
-
   electionSettings = {
     ...electionSettings,
-    currentStage: "STAGE_1_NOMINATION",
-    isOpen: true,
-    stage1StartDate: nowStr,
-    stage1EndDate: endStr,
-    startDate: nowStr,
-    endDate: endStr,
+    currentStage: "STAGE_0_ROSTER",
+    isOpen: false,
+    stage1StartDate: "",
+    stage1EndDate: "",
+    stage2StartDate: "",
+    stage2EndDate: "",
+    startDate: "",
+    endDate: "",
   };
 
   auditLogs.unshift({
     id: `a${Date.now()}`,
     action: "System Reset to Step 1",
     performedBy: "admin",
-    details: `System reset to Step 1 (Stage 1 Primary Nomination). ${fillSampleReps ? "Loaded sample Block Representatives." : "Cleared votes and reset stage."}`,
+    details: `System reset to Step 1 (Stage 0: Roster Entry). Schedules cleared for manual setup.`,
     timestamp: new Date().toISOString(),
   });
 
@@ -974,24 +973,23 @@ export const startFromBeginning = () => {
     delete p.votedAt;
   });
 
-  const nowStr = new Date().toISOString().substring(0, 16);
-  const endStr = new Date(Date.now() + 86400000).toISOString().substring(0, 16);
-
   electionSettings = {
     ...electionSettings,
-    currentStage: "STAGE_1_NOMINATION",
-    isOpen: true,
-    startDate: nowStr,
-    endDate: endStr,
-    stage1StartDate: nowStr,
-    stage1EndDate: endStr,
+    currentStage: "STAGE_0_ROSTER",
+    isOpen: false,
+    startDate: "",
+    endDate: "",
+    stage1StartDate: "",
+    stage1EndDate: "",
+    stage2StartDate: "",
+    stage2EndDate: "",
   };
 
   auditLogs.unshift({
     id: `a${Date.now()}`,
     action: "Clean Start Initialized",
     performedBy: "admin",
-    details: "Reset election to the very beginning with empty roster, 0 candidates, and 0 votes",
+    details: "Reset election to the very beginning with empty roster, Stage 0, and cleared schedules for manual setup",
     timestamp: new Date().toISOString(),
   });
 
