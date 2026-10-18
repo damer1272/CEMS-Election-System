@@ -113,7 +113,14 @@ interface PersistedState {
 
 const STORAGE_KEY = "cems_election_v9_clean";
 const API_URL = "/api/election";
-const DEFAULT_POSITIONS: string[] = ["President", "Vice President", "Secretary", "Treasurer", "Auditor", "Public Relations Officer (PRO)"];
+export const DEFAULT_POSITIONS: string[] = [
+  "Prime Minister",
+  "Deputy Prime Minister",
+  "Cabinet Secretary",
+  "Minister of Finance",
+  "Auditor General",
+  "Minister of Academic Affairs",
+];
 
 const DEFAULT_ADMIN_USERS: AdminUser[] = [
   { id: "u1", username: "admin", password: "admin123", role: "super_admin", createdAt: "2026-10-04" },
@@ -188,7 +195,12 @@ function getDefaultState(): PersistedState {
 }
 
 function normalizeState(parsed: Partial<PersistedState>): PersistedState {
-  const loadedPositions = Array.isArray(parsed.positions) && parsed.positions.length > 0
+  const OLD_DEFAULTS = ["President", "Vice President", "Secretary", "Treasurer", "Auditor", "Public Relations Officer (PRO)"];
+  const isOldDefault = Array.isArray(parsed.positions) &&
+    parsed.positions.length === OLD_DEFAULTS.length &&
+    parsed.positions.every((p, i) => p === OLD_DEFAULTS[i]);
+
+  const loadedPositions = Array.isArray(parsed.positions) && parsed.positions.length > 0 && !isOldDefault
     ? parsed.positions
     : [...DEFAULT_POSITIONS];
   const rawCandidates = Array.isArray(parsed.candidates)
@@ -966,6 +978,7 @@ export const startFromBeginning = () => {
   blockReps = [];
   candidates = [];
   votes = [];
+  positions = [...DEFAULT_POSITIONS];
   participants.forEach(p => {
     p.hasVoted = false;
     p.hasVotedStage1 = false;

@@ -604,7 +604,7 @@ export default function SettingsView() {
                   <input
                     value={position}
                     onChange={e => updatePositionAt(index, e.target.value)}
-                    placeholder="e.g. President"
+                    placeholder="e.g. Prime Minister"
                     className="flex-1 border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF7D2D] focus:border-transparent bg-white group-hover:border-slate-400 transition"
                   />
                   <button
