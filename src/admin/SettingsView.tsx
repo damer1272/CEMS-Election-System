@@ -13,8 +13,7 @@ import {
   Award,
   AlertTriangle,
   Layers,
-  Radio,
-  X
+  Radio
 } from "lucide-react";
 import {
   getSettings,
@@ -32,188 +31,6 @@ import {
   subscribeToStore
 } from "../data/store";
 import type { ElectionSettings, ElectionStage } from "../data/store";
-
-function getLocalIsoString(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const year = date.getFullYear();
-  const month = pad(date.getMonth() + 1);
-  const day = pad(date.getDate());
-  const hours = pad(date.getHours());
-  const mins = pad(date.getMinutes());
-  return `${year}-${month}-${day}T${hours}:${mins}`;
-}
-
-function formatSchedulePreview(isoStr?: string): { formatted: string; isPast: boolean; label: string } {
-  if (!isoStr || !isoStr.trim()) {
-    return { formatted: "", isPast: false, label: "Not Scheduled (Manual Voting)" };
-  }
-  try {
-    const date = new Date(isoStr);
-    if (isNaN(date.getTime())) {
-      return { formatted: "", isPast: false, label: "Invalid Date" };
-    }
-    const formatted = date.toLocaleString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-    const now = Date.now();
-    const diff = date.getTime() - now;
-    const isPast = diff < 0;
-    let label = "";
-    if (isPast) {
-      const pastMins = Math.abs(Math.round(diff / 60000));
-      label = pastMins < 60 ? `Ended (${pastMins}m ago)` : `Ended (${Math.round(pastMins / 60)}h ago)`;
-    } else {
-      const mins = Math.round(diff / 60000);
-      if (mins < 60) label = `In ${mins}m`;
-      else if (mins < 1440) label = `In ${Math.floor(mins / 60)}h ${mins % 60}m`;
-      else label = `In ${Math.round(mins / 1440)}d`;
-    }
-    return { formatted, isPast, label };
-  } catch {
-    return { formatted: "", isPast: false, label: "" };
-  }
-}
-
-interface ScheduleFieldProps {
-  label: string;
-  value: string;
-  onChange: (val: string) => void;
-  helperText?: string;
-  accentBorderColor?: string;
-}
-
-function ScheduleField({
-  label,
-  value,
-  onChange,
-  helperText,
-  accentBorderColor = "border-slate-200",
-}: ScheduleFieldProps) {
-  const preview = formatSchedulePreview(value);
-  const hasValue = Boolean(value && value.trim());
-
-  const handleSetNow = () => {
-    onChange(getLocalIsoString(new Date()));
-  };
-
-  const handleAddHour = () => {
-    const base = hasValue ? new Date(value).getTime() : Date.now();
-    onChange(getLocalIsoString(new Date(base + 60 * 60 * 1000)));
-  };
-
-  const handleAddDay = () => {
-    const base = hasValue ? new Date(value).getTime() : Date.now();
-    onChange(getLocalIsoString(new Date(base + 24 * 60 * 60 * 1000)));
-  };
-
-  const handleClear = () => {
-    onChange("");
-  };
-
-  return (
-    <div className={`bg-white border ${accentBorderColor} rounded-2xl p-4 space-y-2.5 shadow-2xs hover:shadow-xs transition w-full`}>
-      {/* Label & Live Status Badge */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <label className="text-xs font-bold text-slate-800 tracking-tight">
-          {label}
-        </label>
-        {hasValue ? (
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md flex-shrink-0">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            {preview.isPast ? "Deadline Passed" : "Scheduled"}
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md flex-shrink-0">
-            Manual / Unscheduled
-          </span>
-        )}
-      </div>
-
-      {/* Input Field with Clear Button */}
-      <div className="relative flex items-center w-full">
-        <input
-          type="datetime-local"
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          className="w-full min-w-0 border border-slate-300 rounded-xl px-3.5 py-2.5 pr-9 text-sm font-semibold text-slate-800 bg-slate-50/70 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF7D2D] focus:border-transparent transition shadow-2xs"
-        />
-        {hasValue && (
-          <button
-            type="button"
-            onClick={handleClear}
-            title="Clear date (Reset to manual)"
-            className="absolute right-2.5 p-1 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
-      </div>
-
-      {/* Formatted Date Preview or Visual Placeholder */}
-      {hasValue ? (
-        <div className="flex flex-wrap items-center justify-between gap-1.5 text-xs bg-emerald-50/70 border border-emerald-200/80 text-emerald-950 rounded-xl px-3 py-1.5 font-medium shadow-2xs">
-          <div className="flex items-center gap-1.5 truncate">
-            <Clock className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-            <span className="font-bold truncate">{preview.formatted}</span>
-          </div>
-          <span className="text-[10px] font-bold text-emerald-700 bg-white border border-emerald-200 px-1.5 py-0.5 rounded shadow-2xs flex-shrink-0">
-            {preview.label}
-          </span>
-        </div>
-      ) : (
-        <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-50 border border-dashed border-slate-300 rounded-xl px-3 py-1.5">
-          <Calendar className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-          <span className="truncate">Placeholder: e.g. 2026-10-20 08:00 AM (Click picker or quick buttons)</span>
-        </div>
-      )}
-
-      {/* 1-Click Quick Adjusters */}
-      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-0.5">Quick:</span>
-        <button
-          type="button"
-          onClick={handleSetNow}
-          className="text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 border border-slate-200 px-2.5 py-1 rounded-lg transition shadow-2xs cursor-pointer"
-        >
-          ⚡ Set Now
-        </button>
-        <button
-          type="button"
-          onClick={handleAddHour}
-          className="text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 border border-slate-200 px-2.5 py-1 rounded-lg transition shadow-2xs cursor-pointer"
-        >
-          +1 Hour
-        </button>
-        <button
-          type="button"
-          onClick={handleAddDay}
-          className="text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 border border-slate-200 px-2.5 py-1 rounded-lg transition shadow-2xs cursor-pointer"
-        >
-          +24h (Tomorrow)
-        </button>
-        {hasValue && (
-          <button
-            type="button"
-            onClick={handleClear}
-            className="text-[11px] font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-2.5 py-1 rounded-lg transition shadow-2xs cursor-pointer ml-auto"
-          >
-            Clear ✕
-          </button>
-        )}
-      </div>
-
-      {helperText && (
-        <p className="text-[11px] text-slate-500 leading-tight pt-0.5">{helperText}</p>
-      )}
-    </div>
-  );
-}
 
 export default function SettingsView() {
   const [form, setForm] = useState<ElectionSettings | null>(() => getSettings());
@@ -270,8 +87,8 @@ export default function SettingsView() {
   const handleSetPresetStartNow = () => {
     const now = new Date();
     const end = new Date(Date.now() + 3600000); // 1 hour
-    const nowStr = getLocalIsoString(now);
-    const endStr = getLocalIsoString(end);
+    const nowStr = now.toISOString().substring(0, 16);
+    const endStr = end.toISOString().substring(0, 16);
     const updated = {
       ...form,
       currentStage: "STAGE_1_NOMINATION" as ElectionStage,
@@ -290,8 +107,8 @@ export default function SettingsView() {
   const handleSetPresetCountdown = () => {
     const future = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes from now
     const end = new Date(Date.now() + 60 * 60 * 1000);
-    const startStr = getLocalIsoString(future);
-    const endStr = getLocalIsoString(end);
+    const startStr = future.toISOString().substring(0, 16);
+    const endStr = end.toISOString().substring(0, 16);
     const updated = {
       ...form,
       currentStage: "STAGE_1_NOMINATION" as ElectionStage,
@@ -310,21 +127,19 @@ export default function SettingsView() {
   const handleSetPresetStage2Now = () => {
     const now = new Date();
     const end = new Date(Date.now() + 3600000);
-    const pastStart = new Date(Date.now() - 7200000);
-    const pastEnd = new Date(Date.now() - 3600000);
-    const startStr = getLocalIsoString(now);
-    const endStr = getLocalIsoString(end);
-    const pastStartStr = getLocalIsoString(pastStart);
-    const pastEndStr = getLocalIsoString(pastEnd);
+    const nowStr = now.toISOString().substring(0, 16);
+    const endStr = end.toISOString().substring(0, 16);
+    const pastStart = new Date(Date.now() - 7200000).toISOString().substring(0, 16);
+    const pastEnd = new Date(Date.now() - 3600000).toISOString().substring(0, 16);
     const updated = {
       ...form,
       currentStage: "STAGE_2_FINAL" as ElectionStage,
       isOpen: true,
-      stage1StartDate: pastStartStr,
-      stage1EndDate: pastEndStr,
-      stage2StartDate: startStr,
+      stage1StartDate: pastStart,
+      stage1EndDate: pastEnd,
+      stage2StartDate: nowStr,
       stage2EndDate: endStr,
-      startDate: startStr,
+      startDate: nowStr,
       endDate: endStr,
     };
     advanceStage1Winners(form.topFinalistsCount || 2);
@@ -337,40 +152,22 @@ export default function SettingsView() {
   const handleSetPresetStage2Countdown = () => {
     const future = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes from now
     const end = new Date(Date.now() + 60 * 60 * 1000);
-    const pastStart = new Date(Date.now() - 7200000);
-    const pastEnd = new Date(Date.now() - 60000);
-    const startStr = getLocalIsoString(future);
-    const endStr = getLocalIsoString(end);
-    const pastStartStr = getLocalIsoString(pastStart);
-    const pastEndStr = getLocalIsoString(pastEnd);
+    const startStr = future.toISOString().substring(0, 16);
+    const endStr = end.toISOString().substring(0, 16);
+    const pastStart = new Date(Date.now() - 7200000).toISOString().substring(0, 16);
+    const pastEnd = new Date(Date.now() - 60000).toISOString().substring(0, 16);
     const updated = {
       ...form,
       currentStage: "STAGE_2_FINAL" as ElectionStage,
       isOpen: true,
-      stage1StartDate: pastStartStr,
-      stage1EndDate: pastEndStr,
+      stage1StartDate: pastStart,
+      stage1EndDate: pastEnd,
       stage2StartDate: startStr,
       stage2EndDate: endStr,
       startDate: startStr,
       endDate: endStr,
     };
     advanceStage1Winners(form.topFinalistsCount || 2);
-    setForm(updated);
-    updateSettings(updated);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
-  };
-
-  const handleClearAllSchedules = () => {
-    const updated = {
-      ...form,
-      stage1StartDate: "",
-      stage1EndDate: "",
-      stage2StartDate: "",
-      stage2EndDate: "",
-      startDate: "",
-      endDate: "",
-    };
     setForm(updated);
     updateSettings(updated);
     setSaved(true);
@@ -475,7 +272,7 @@ export default function SettingsView() {
   ];
 
   return (
-    <div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full pb-24">
+    <div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">
       {/* Page Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-slate-200/80">
         <div>
@@ -625,8 +422,8 @@ export default function SettingsView() {
             </div>
 
             {/* Quick Testing & Schedule Presets Bar */}
-            <div className="bg-gradient-to-r from-slate-50 to-slate-100/70 border border-slate-200 rounded-xl p-4 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="bg-gradient-to-r from-slate-50 to-slate-100/70 border border-slate-200 rounded-xl p-4 space-y-2.5">
+              <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-[#FF7D2D]" /> Quick Schedule Presets (Testing & Instant Demo)
                 </span>
@@ -637,49 +434,41 @@ export default function SettingsView() {
               <p className="text-[11px] text-slate-500 leading-relaxed">
                 Instantly populate date and time triggers to demonstrate active voting, student portal countdowns, or finalist timeouts.
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 pt-1">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
                 <button
                   type="button"
                   onClick={handleSetPresetStartNow}
-                  className="py-2.5 px-2 bg-[#233C4B] hover:bg-[#192B36] text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                  className="py-2.5 px-3 bg-[#233C4B] hover:bg-[#192B36] text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <span>🚀 Start Stage 1 Now</span>
                 </button>
                 <button
                   type="button"
                   onClick={handleSetPresetCountdown}
-                  className="py-2.5 px-2 bg-[#FAC846] hover:bg-[#F0BE3C] text-[#233C4B] text-xs font-bold rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                  className="py-2.5 px-3 bg-[#FAC846] hover:bg-[#F0BE3C] text-[#233C4B] text-xs font-bold rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <span>⏳ Stage 1 (2-Min)</span>
                 </button>
                 <button
                   type="button"
                   onClick={handleSetPresetStage2Now}
-                  className="py-2.5 px-2 bg-[#5F9B8C] hover:bg-[#4E8376] text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                  className="py-2.5 px-3 bg-[#5F9B8C] hover:bg-[#4E8376] text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <span>⚡ Auto Stage 2 Now</span>
                 </button>
                 <button
                   type="button"
                   onClick={handleSetPresetStage2Countdown}
-                  className="py-2.5 px-2 bg-[#FF7D2D] hover:bg-[#EA6C1E] text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                  className="py-2.5 px-3 bg-[#FF7D2D] hover:bg-[#EA6C1E] text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <span>⏱️ Stage 2 (2-Min)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleClearAllSchedules}
-                  className="py-2.5 px-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold rounded-xl transition shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
-                  title="Clear all schedules to operate election manually"
-                >
-                  <span>🧹 Clear (Manual)</span>
                 </button>
               </div>
             </div>
 
             {/* Stage 1 Schedule Box */}
             <div className="border border-[#233C4B]/20 bg-[#233C4B]/[0.03] rounded-2xl p-5 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#233C4B]/10 pb-2.5">
+              <div className="flex items-center justify-between border-b border-[#233C4B]/10 pb-2.5">
                 <div>
                   <h3 className="font-bold text-[#233C4B] text-sm">Stage 1: Primary Representative Election Schedule</h3>
                   <p className="text-slate-500 text-xs">Voters select nominated Block Representatives to qualify for finals</p>
@@ -689,27 +478,35 @@ export default function SettingsView() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                <ScheduleField
-                  label="Stage 1 Start Date & Time"
-                  value={form.stage1StartDate}
-                  onChange={val => setForm(f => f ? { ...f, stage1StartDate: val } : f)}
-                  helperText="When preliminary voting for Block Representatives opens"
-                  accentBorderColor="border-[#233C4B]/25"
-                />
-                <ScheduleField
-                  label="Stage 1 Deadline (End Date & Time)"
-                  value={form.stage1EndDate}
-                  onChange={val => setForm(f => f ? { ...f, stage1EndDate: val } : f)}
-                  helperText="When Stage 1 voting closes and top 2 finalists qualify"
-                  accentBorderColor="border-[#233C4B]/25"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Stage 1 Start Date & Time
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={form.stage1StartDate}
+                    onChange={e => setForm(f => f ? { ...f, stage1StartDate: e.target.value } : f)}
+                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#FF7D2D] focus:border-transparent transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Stage 1 Deadline (End Date & Time)
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={form.stage1EndDate}
+                    onChange={e => setForm(f => f ? { ...f, stage1EndDate: e.target.value } : f)}
+                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#FF7D2D] focus:border-transparent transition"
+                  />
+                </div>
               </div>
             </div>
 
             {/* Stage 2 Schedule Box */}
             <div className="border border-[#FF7D2D]/25 bg-[#FF7D2D]/[0.03] rounded-2xl p-5 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#FF7D2D]/10 pb-2.5">
+              <div className="flex items-center justify-between border-b border-[#FF7D2D]/10 pb-2.5">
                 <div>
                   <h3 className="font-bold text-[#233C4B] text-sm">Stage 2: Final Executive Election Schedule</h3>
                   <p className="text-slate-500 text-xs">Voters cast decisive ballots among top-voted finalists</p>
@@ -719,21 +516,29 @@ export default function SettingsView() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                <ScheduleField
-                  label="Stage 2 Start Date & Time"
-                  value={form.stage2StartDate}
-                  onChange={val => setForm(f => f ? { ...f, stage2StartDate: val } : f)}
-                  helperText="When final voting among executive finalists opens"
-                  accentBorderColor="border-[#FF7D2D]/30"
-                />
-                <ScheduleField
-                  label="Stage 2 Deadline (Final End Date & Time)"
-                  value={form.stage2EndDate}
-                  onChange={val => setForm(f => f ? { ...f, stage2EndDate: val } : f)}
-                  helperText="Final cutoff time for student ballot submissions"
-                  accentBorderColor="border-[#FF7D2D]/30"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Stage 2 Start Date & Time
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={form.stage2StartDate}
+                    onChange={e => setForm(f => f ? { ...f, stage2StartDate: e.target.value } : f)}
+                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#FF7D2D] focus:border-transparent transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Stage 2 Deadline (Final End Date & Time)
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={form.stage2EndDate}
+                    onChange={e => setForm(f => f ? { ...f, stage2EndDate: e.target.value } : f)}
+                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#FF7D2D] focus:border-transparent transition"
+                  />
+                </div>
               </div>
             </div>
 

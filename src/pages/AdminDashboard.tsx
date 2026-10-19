@@ -53,7 +53,7 @@ export default function AdminDashboard() {
   const ActiveView = PAGE_COMPONENTS[activePage] ?? DashboardView;
 
   return (
-    <div className="flex h-screen h-[100dvh] min-h-screen overflow-hidden bg-slate-50 overscroll-none">
+    <div className="flex h-screen overflow-hidden bg-slate-50">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setSidebarOpen(false)} />
@@ -73,9 +73,9 @@ export default function AdminDashboard() {
       </div>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-slate-50 min-h-0">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Mobile top bar */}
-        <div className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-slate-200 flex-shrink-0">
+        <div className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-slate-200">
           <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition">
             {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -84,7 +84,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto bg-slate-50 min-h-full pb-24 overscroll-contain">
+        <div className="flex-1 overflow-y-auto">
           <ActiveView />
         </div>
       </div>
