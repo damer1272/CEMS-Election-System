@@ -93,30 +93,30 @@ export default function AuditLogsView() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full text-left border-collapse min-w-[800px]">
               <thead>
-                <tr className="bg-slate-50 text-left">
-                  <th className="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Time</th>
-                  <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Action</th>
-                  <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Performed By</th>
-                  <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Details</th>
+                <tr className="bg-slate-50 text-left border-b border-slate-200">
+                  <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap w-44">Time</th>
+                  <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap min-w-[240px]">Action</th>
+                  <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap min-w-[140px]">Performed By</th>
+                  <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider min-w-[280px]">Details</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filtered.map(log => {
                   const badgeColor = Object.entries(ACTION_COLORS).find(([k]) => log.action.includes(k))?.[1] || "bg-slate-100 text-slate-700 border-slate-200";
                   return (
-                    <tr key={log.id} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="px-5 py-3.5 text-xs font-mono text-slate-400 whitespace-nowrap">
+                    <tr key={log.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="px-5 py-4 text-xs font-mono text-slate-500 whitespace-nowrap align-middle">
                         {new Date(log.timestamp).toLocaleString()}
                       </td>
-                      <td className="px-4 py-3.5">
-                        <span className={`text-xs font-bold border rounded-full px-2.5 py-0.5 ${badgeColor}`}>
+                      <td className="px-5 py-4 whitespace-nowrap align-middle min-w-[240px]">
+                        <span className={`inline-flex items-center text-xs font-bold border rounded-full px-3 py-1 whitespace-nowrap shadow-2xs leading-none ${badgeColor}`}>
                           {log.action}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5 text-sm text-[#233C4B] font-bold">{log.performedBy}</td>
-                      <td className="px-4 py-3.5 text-sm text-slate-600">{log.details}</td>
+                      <td className="px-5 py-4 text-sm text-[#233C4B] font-bold whitespace-nowrap align-middle">{log.performedBy}</td>
+                      <td className="px-5 py-4 text-sm text-slate-600 leading-relaxed align-middle">{log.details}</td>
                     </tr>
                   );
                 })}
