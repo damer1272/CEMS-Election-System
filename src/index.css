@@ -27,12 +27,44 @@
 
 * { box-sizing: border-box; }
 
+html,
+body,
+#root {
+  min-height: 100%;
+  height: 100%;
+  background-color: #f8fafb;
+}
+
+html {
+  overscroll-behavior-y: none;
+}
+
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   background-color: #f8fafb;
   color: #1e293b;
   margin: 0;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Responsive & clean datetime-local styling */
+input[type="datetime-local"] {
+  min-height: 42px;
+  line-height: 1.4;
+  color-scheme: light;
+}
+
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  opacity: 0.75;
+  transition: opacity 0.15s, background-color 0.15s;
+}
+
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  background-color: rgba(255, 125, 45, 0.15);
 }
 
 ::-webkit-scrollbar { width: 5px; height: 5px; }
