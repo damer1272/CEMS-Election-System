@@ -13,7 +13,6 @@ import {
   ShieldCheck,
   RefreshCw,
   Check,
-  ScanLine,
   IdCard,
   Clock,
   Lock,
@@ -28,7 +27,6 @@ import {
   castVote,
   getBlockReps,
   getCandidates,
-  getCandidatesByPosition,
   getPositions,
   getSettings,
   getScheduleStatus,
@@ -36,7 +34,6 @@ import {
   getElectionWinners,
   refreshFromServer,
   candidateQualificationLabel,
-  formatDateTimeNice,
   subscribeToStore,
   COURSES,
   YEAR_LEVELS
@@ -62,7 +59,7 @@ export default function VotingPage() {
   const [studentId, setStudentId] = useState("");
   const [studentName, setStudentName] = useState("");
   const [selectedCourse, setSelectedCourse] = useState<Course>(COURSES[0]);
-  const [yearLevel, setYearLevel] = useState(YEAR_LEVELS[0]);
+  const [yearLevel, setYearLevel] = useState<string>(YEAR_LEVELS[0]);
   const [error, setError] = useState("");
 
   // Step 2: ID Scanner State
@@ -70,7 +67,6 @@ export default function VotingPage() {
   const [scanResult, setScanResult] = useState<SchoolIDScanResult | null>(null);
   const [idPhotoUrl, setIdPhotoUrl] = useState<string | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
-  const [isVerifiedPCC, setIsVerifiedPCC] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -249,14 +245,8 @@ export default function VotingPage() {
     try {
       const result = await scanAndVerifySchoolID(imageSrc);
       setScanResult(result);
-
-      if (result.isSchoolVerified) {
-        setIsVerifiedPCC(true);
-      } else {
-        setIsVerifiedPCC(true); // Allow proceed with photo proof attached
-      }
     } catch {
-      setIsVerifiedPCC(true);
+      // allow fallback
     } finally {
       setIsScanning(false);
     }
@@ -638,7 +628,7 @@ export default function VotingPage() {
 
           {/* Position by Position Nominated Winners */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {nominatedFinalists.map(({ position, finalists, allNominees, totalVotes }) => (
+            {nominatedFinalists.map(({ position, finalists, totalVotes }) => (
               <div key={position} className="bg-[#1E3442] border border-[#233C4B] rounded-3xl p-5 shadow-xl flex flex-col justify-between hover:border-[#FAC846]/40 transition">
                 <div>
                   <div className="flex items-center justify-between border-b border-[#233C4B] pb-3 mb-4">

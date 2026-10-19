@@ -10,13 +10,12 @@ import {
   refreshFromServer,
   saveAndReload,
   candidateQualificationLabel,
-  formatDateTimeNice,
   subscribeToStore
 } from "../data/store";
 import type { ScheduleStatusInfo, PositionFinalistsSummary } from "../data/store";
 import Avatar from "../components/Avatar";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { Trophy, Award, UserCheck, Sparkles, ArrowRight, CheckCircle2, Clock } from "lucide-react";
+import { Trophy, UserCheck, ArrowRight, Clock } from "lucide-react";
 
 type LeaderEntry = {
   position: string;
@@ -206,7 +205,7 @@ export default function ResultsView() {
                   <span className="text-[10px] text-slate-400">{totalVotes} votes</span>
                 </div>
                 <div className="space-y-2">
-                  {finalists.slice(0, 2).map((f, i) => (
+                  {finalists.slice(0, 2).map((f) => (
                     <div key={f.id} className="flex items-center gap-2.5">
                       <Avatar src={f.photo} name={f.name} className="w-8 h-8 rounded-full ring-1 ring-[#FAC846]" fallbackClassName="bg-[#233C4B]/30 text-white" />
                       <div className="flex-1 min-w-0">

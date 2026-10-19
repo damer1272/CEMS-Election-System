@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getVotes, getCandidates, getParticipants, getPositions, getBlockReps, refreshFromServer, subscribeToStore } from "../data/store";
 import type { VoteRecord, Candidate, Participant, BlockRepresentative } from "../data/store";
-import { Download, Search, CheckCircle2 } from "lucide-react";
+import { Download, Search } from "lucide-react";
 
 export default function VotesView() {
   const [votes, setVotes] = useState<VoteRecord[]>([]);

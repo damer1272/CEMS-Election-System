@@ -1,11 +1,10 @@
-import seedElectionData from "../../data/election-data.json";
-
 export type Position = string;
 
 /** Prior block office that qualifies a student to run for CSG (block elections happen outside this system). */
 export type BlockOffice = "Block Representative" | "Block Secretary" | "Block Treasurer";
 
 export const COURSES = ["BSIT", "BSBA", "BEEd", "BSCrim"] as const;
+export type Course = (typeof COURSES)[number];
 export const YEAR_LEVELS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year"] as const;
 export const BLOCK_OFFICES: BlockOffice[] = ["Block Representative", "Block Secretary", "Block Treasurer"];
 
@@ -127,10 +126,6 @@ const DEFAULT_ADMIN_USERS: AdminUser[] = [
   { id: "u1", username: "admin", password: "admin123", role: "super_admin", createdAt: "2026-10-04" },
 ];
 
-const DEFAULT_BLOCK_REPS: BlockRepresentative[] = [];
-const DEFAULT_CANDIDATES: Candidate[] = [];
-const DEFAULT_PARTICIPANTS: Participant[] = [];
-
 const DEFAULT_AUDIT_LOGS: AuditLog[] = [
   { id: "a1", action: "System Initialized", performedBy: "super_admin", details: "CEMS election portal initialized with clean database", timestamp: new Date().toISOString() },
 ];
@@ -182,7 +177,13 @@ export function getInitials(name?: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-export function candidateQualificationLabel(c: Pick<Candidate, "course" | "year" | "block" | "blockOffice" | "partyList">): string {
+export function candidateQualificationLabel(c: {
+  course?: string;
+  year?: string;
+  block?: string;
+  blockOffice?: string;
+  partyList?: string;
+}): string {
   const parts: string[] = [];
   if (c.course) parts.push(c.course);
   if (c.year) parts.push(c.year);

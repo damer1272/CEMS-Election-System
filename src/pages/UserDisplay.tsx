@@ -16,7 +16,7 @@ import {
 import type { ElectionSettings, ScheduleStatusInfo, PositionFinalistsSummary, PositionWinner } from "../data/store";
 import AppLogo from "../components/AppLogo";
 import Avatar from "../components/Avatar";
-import { Sparkles, Trophy, UserCheck, ArrowUpRight, Clock, CheckCircle2, Flame, Sun, Moon, Award, Check } from "lucide-react";
+import { Trophy, UserCheck, ArrowUpRight, Clock, CheckCircle2, Flame, Sun, Moon } from "lucide-react";
 
 type LeaderboardEntry = {
   position: string;
@@ -50,7 +50,6 @@ export default function UserDisplay() {
   const [settings, setSettings] = useState<ElectionSettings | null>(() => getSettings());
   const [votesCast, setVotesCast] = useState<number>(() => getVotesCast());
   const [totalVoters, setTotalVoters] = useState<number>(() => getTotalVoters());
-  const [nowDate, setNowDate] = useState<Date>(new Date());
   const [scheduleStatus, setScheduleStatus] = useState<ScheduleStatusInfo>(() => getScheduleStatus(new Date()));
   const [nominatedFinalists, setNominatedFinalists] = useState<PositionFinalistsSummary[]>(() => getNominatedFinalists());
   const [winners, setWinners] = useState<PositionWinner[]>(() => getElectionWinners());
@@ -77,7 +76,6 @@ export default function UserDisplay() {
   const reloadData = async () => {
     await refreshFromServer();
     const currentNow = new Date();
-    setNowDate(currentNow);
     setLeaderboard(getLeaderboard());
     setSettings(getSettings());
     setVotesCast(getVotesCast());
@@ -91,7 +89,6 @@ export default function UserDisplay() {
     reloadData();
     const clockInterval = setInterval(() => {
       const currentNow = new Date();
-      setNowDate(currentNow);
       setScheduleStatus(getScheduleStatus(currentNow));
     }, 1000);
 
@@ -128,21 +125,6 @@ export default function UserDisplay() {
   const isFinalConcluded =
     isCompleted ||
     (currentStage === "STAGE_2_FINAL" && (scheduleStatus.code === "TIMED_OUT" || scheduleStatus.code === "STAGE_2_ENDED"));
-
-  const getStageTag = () => {
-    if (isFinalConcluded) return "Election Concluded — Official Winners Proclaimed";
-    switch (currentStage) {
-      case "STAGE_1_NOMINATION":
-        if (isStage1Concluded) return "Stage 1 Nomination Concluded · Finalists Ready";
-        return "Stage 1: Primary Nominee Election";
-      case "STAGE_2_FINAL":
-        return "Stage 2: Final Executive Election";
-      case "COMPLETED":
-        return "Election Completed — Winners Declared";
-      default:
-        return "Stage 0: Block Representatives Roster";
-    }
-  };
 
   const activeLeaderboard = leaderboard && leaderboard.some(l => l.candidates.length > 0)
     ? leaderboard

@@ -20,7 +20,18 @@ import {
 import type { Candidate, ElectionStage } from "../data/store";
 import Avatar from "../components/Avatar";
 
-const emptyForm = (position = "") => ({
+interface CandidateFormData {
+  name: string;
+  position: string;
+  partyList: string;
+  photo: string;
+  course: string;
+  year: string;
+  block: string;
+  blockOffice: string;
+}
+
+const emptyForm = (position = ""): CandidateFormData => ({
   name: "",
   position,
   partyList: "",
@@ -38,7 +49,7 @@ export default function CandidatesView() {
   const [topCount, setTopCount] = useState<number>(2);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Candidate | null>(null);
-  const [form, setForm] = useState(emptyForm());
+  const [form, setForm] = useState<CandidateFormData>(emptyForm());
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
   const [savedNotice, setSavedNotice] = useState(false);
@@ -190,6 +201,12 @@ export default function CandidatesView() {
           <Plus className="w-4 h-4" /> Add Candidate
         </button>
       </div>
+
+      {savedNotice && (
+        <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-medium rounded-xl flex items-center gap-2">
+          <Check className="w-4 h-4 text-emerald-600" /> Candidate saved successfully!
+        </div>
+      )}
 
       {/* Parliamentary Stage Stepper */}
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">

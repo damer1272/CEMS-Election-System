@@ -1,5 +1,4 @@
 import { createWorker } from "tesseract.js";
-import { COURSES } from "../data/store";
 
 export interface SchoolIDScanResult {
   isSchoolVerified: boolean;
@@ -27,7 +26,7 @@ const SCHOOL_KEYWORDS = [
 
 export async function scanAndVerifySchoolID(
   imageSource: string | HTMLCanvasElement | File | Blob,
-  onProgress?: (pct: number) => void
+  _onProgress?: (pct: number) => void
 ): Promise<SchoolIDScanResult> {
   let rawText = "";
   let confidence = 0;

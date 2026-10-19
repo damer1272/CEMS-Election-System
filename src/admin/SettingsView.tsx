@@ -13,7 +13,6 @@ import {
   Award,
   AlertTriangle,
   Layers,
-  ChevronRight,
   Radio
 } from "lucide-react";
 import {
@@ -110,26 +109,6 @@ export default function SettingsView() {
     const end = new Date(Date.now() + 60 * 60 * 1000);
     const startStr = future.toISOString().substring(0, 16);
     const endStr = end.toISOString().substring(0, 16);
-    const updated = {
-      ...form,
-      currentStage: "STAGE_1_NOMINATION" as ElectionStage,
-      isOpen: true,
-      stage1StartDate: startStr,
-      stage1EndDate: endStr,
-      startDate: startStr,
-      endDate: endStr,
-    };
-    setForm(updated);
-    updateSettings(updated);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
-  };
-
-  const handleSetPresetTimeout = () => {
-    const pastStart = new Date(Date.now() - 3600000);
-    const pastEnd = new Date(Date.now() - 60000); // 1 minute ago
-    const startStr = pastStart.toISOString().substring(0, 16);
-    const endStr = pastEnd.toISOString().substring(0, 16);
     const updated = {
       ...form,
       currentStage: "STAGE_1_NOMINATION" as ElectionStage,

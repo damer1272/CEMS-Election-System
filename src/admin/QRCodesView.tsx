@@ -8,7 +8,6 @@ import {
   Wifi,
   Globe,
   AlertTriangle,
-  CheckCircle2,
   Sparkles,
   Smartphone,
   Layers,
