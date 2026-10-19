@@ -84,7 +84,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto bg-slate-50 pb-20">
           <ActiveView />
         </div>
       </div>

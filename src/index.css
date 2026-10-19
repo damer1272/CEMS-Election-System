@@ -27,12 +27,26 @@
 
 * { box-sizing: border-box; }
 
+html,
+body,
+#root {
+  min-height: 100%;
+  background-color: #f8fafb;
+}
+
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   background-color: #f8fafb;
   color: #1e293b;
   margin: 0;
   -webkit-font-smoothing: antialiased;
+}
+
+input[type="datetime-local"] {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 ::-webkit-scrollbar { width: 5px; height: 5px; }
