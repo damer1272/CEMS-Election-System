@@ -686,7 +686,7 @@ export default function UserDisplay() {
                               <div className="flex justify-between items-center text-xs mb-1.5 font-bold">
                                 <span className={isDark ? "text-slate-300" : "text-slate-700"}>Winning Tally</span>
                                 <span className={isDark ? "text-[#FAC846]" : "text-[#FF7D2D]"}>
-                                  {winner.stage2Votes ?? winner.votes} votes ({winnerPercentage}%)
+                                  {typeof winner.stage2Votes === "number" ? winner.stage2Votes : winner.votes} votes ({winnerPercentage}%)
                                 </span>
                               </div>
                               <div className={`w-full rounded-full h-2 overflow-hidden ${isDark ? "bg-[#14232C]" : "bg-slate-200"}`}>
@@ -721,11 +721,11 @@ export default function UserDisplay() {
                               </div>
                               <div className="text-right flex-shrink-0 font-mono font-bold">
                                 <p className={isDark ? "text-slate-300" : "text-slate-700"}>
-                                  {runnerUp.stage2Votes ?? runnerUp.votes}v
+                                  {typeof runnerUp.stage2Votes === "number" ? runnerUp.stage2Votes : runnerUp.votes}v
                                 </p>
                                 <p className="text-[10px] text-slate-400">
                                   {totalVotes > 0
-                                    ? Math.round(((runnerUp.stage2Votes ?? runnerUp.votes) / totalVotes) * 100)
+                                    ? Math.round(((typeof runnerUp.stage2Votes === "number" ? runnerUp.stage2Votes : runnerUp.votes) / totalVotes) * 100)
                                     : 0}
                                   %
                                 </p>
@@ -900,7 +900,9 @@ export default function UserDisplay() {
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                 {activeLeaderboard.map(({ position, candidates }) => {
                   const getVotes = (c: (typeof candidates)[number]) =>
-                    isFinalStage ? c.stage2Votes ?? c.votes : c.stage1Votes ?? c.votes;
+                    isFinalStage
+                      ? (typeof c.stage2Votes === "number" ? c.stage2Votes : 0)
+                      : (typeof c.stage1Votes === "number" ? c.stage1Votes : (c.votes || 0));
 
                   const candidatesWithVotes = candidates.filter(c => getVotes(c) > 0);
                   const maxVotes = Math.max(...candidates.map(getVotes), 1);

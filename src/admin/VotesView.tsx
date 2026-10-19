@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { getVotes, getCandidates, getParticipants, getPositions, refreshFromServer, subscribeToStore } from "../data/store";
-import type { VoteRecord, Candidate, Participant } from "../data/store";
+import { getVotes, getCandidates, getParticipants, getPositions, getBlockReps, refreshFromServer, subscribeToStore } from "../data/store";
+import type { VoteRecord, Candidate, Participant, BlockRepresentative } from "../data/store";
 import { Download, Search, CheckCircle2 } from "lucide-react";
 
 export default function VotesView() {
@@ -8,6 +8,7 @@ export default function VotesView() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [positions, setPositions] = useState<string[]>([]);
+  const [blockReps, setBlockReps] = useState<BlockRepresentative[]>([]);
   const [search, setSearch] = useState("");
   const [selectedPos, setSelectedPos] = useState("ALL");
 
@@ -17,6 +18,7 @@ export default function VotesView() {
       setCandidates(getCandidates());
       setParticipants(getParticipants());
       setPositions(getPositions());
+      setBlockReps(getBlockReps());
     };
     refresh();
     const unsubscribe = subscribeToStore(refresh);
@@ -29,7 +31,15 @@ export default function VotesView() {
     };
   }, []);
 
-  const getCandidateName = (id: string) => candidates.find(c => c.id === id)?.name ?? id;
+  const getCandidateName = (id: string) => {
+    const cand = candidates.find(
+      c => c.id === id || c.blockRepId === id || (c.blockRepId && id.includes(c.blockRepId))
+    );
+    if (cand) return cand.name;
+    const rep = blockReps.find(r => r.id === id || id.includes(r.id));
+    if (rep) return rep.name;
+    return id;
+  };
   const getParticipant = (id: string) => participants.find(p => p.id === id);
 
   const filtered = votes.filter(v => {

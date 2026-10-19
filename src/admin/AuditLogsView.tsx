@@ -52,7 +52,7 @@ export default function AuditLogsView() {
     a.href = url;
     a.download = `audit_logs_${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
-    URL.revokeObjectURL(a.href);
+    URL.revokeObjectURL(url);
   };
 
   return (

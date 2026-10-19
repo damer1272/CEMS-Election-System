@@ -269,15 +269,7 @@ export function notifyStoreListeners() {
   if (typeof window !== "undefined") {
     try {
       window.dispatchEvent(new CustomEvent("cems:store_update", { detail: { lastUpdated: stateLastUpdated } }));
-    } catch {}
-
-    try {
-      if ("BroadcastChannel" in window) {
-        const bc = new BroadcastChannel("cems_sync_channel");
-        bc.postMessage({ type: "SYNC", lastUpdated: stateLastUpdated });
-        bc.close();
-      }
-    } catch {}
+    } catch { }
   }
 }
 
@@ -285,7 +277,7 @@ if (typeof window !== "undefined") {
   window.addEventListener("storage", (e) => {
     if (!e.key || e.key.includes("cems_election")) {
       const local = loadStateFromLocalStorage();
-      if (local) {
+      if (local && typeof local.lastUpdated === "number" && local.lastUpdated > stateLastUpdated) {
         applyState(local, true);
       }
     }
@@ -296,13 +288,16 @@ if (typeof window !== "undefined") {
       const bc = new BroadcastChannel("cems_sync_channel");
       bc.onmessage = (event) => {
         if (event.data?.type === "SYNC") {
-          const local = loadStateFromLocalStorage();
-          if (local && (!local.lastUpdated || local.lastUpdated >= stateLastUpdated)) {
-            applyState(local, true);
+          const msgTime = typeof event.data.lastUpdated === "number" ? event.data.lastUpdated : 0;
+          if (msgTime > stateLastUpdated) {
+            const local = loadStateFromLocalStorage();
+            if (local && typeof local.lastUpdated === "number" && local.lastUpdated > stateLastUpdated) {
+              applyState(local, true);
+            }
           }
         }
       };
-    } catch {}
+    } catch { }
   }
 }
 
@@ -339,13 +334,22 @@ async function fetchServerState(): Promise<PersistedState | null> {
   }
 }
 
-async function saveServerState(state: PersistedState): Promise<void> {
+async function saveServerState(state: PersistedState, isReset = false): Promise<void> {
   try {
-    await fetch(API_URL, {
+    const res = await fetch(API_URL, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(isReset ? { "X-CEMS-Reset": "true" } : {}),
+      },
       body: JSON.stringify(state),
     });
+    if (res.ok) {
+      const result = await res.json().catch(() => null);
+      if (result && result.state && typeof result.state.lastUpdated === "number" && result.state.lastUpdated > stateLastUpdated) {
+        applyState(result.state, true);
+      }
+    }
   } catch {
     // Keep working offline with in-memory state
   }
@@ -353,7 +357,7 @@ async function saveServerState(state: PersistedState): Promise<void> {
 
 let persistQueue: Promise<void> = Promise.resolve();
 
-function persistState() {
+function persistState(isReset = false) {
   stateLastUpdated = Date.now();
   const state = getStateSnapshot();
   if (typeof window !== "undefined") {
@@ -362,9 +366,17 @@ function persistState() {
     } catch {
       // ignore storage quota error
     }
+
+    try {
+      if ("BroadcastChannel" in window) {
+        const bc = new BroadcastChannel("cems_sync_channel");
+        bc.postMessage({ type: "SYNC", lastUpdated: stateLastUpdated });
+        bc.close();
+      }
+    } catch { }
   }
   notifyStoreListeners();
-  persistQueue = persistQueue.then(() => saveServerState(state));
+  persistQueue = persistQueue.then(() => saveServerState(state, isReset));
 }
 
 export async function flushPersist(): Promise<void> {
@@ -393,7 +405,7 @@ export async function initStore(): Promise<void> {
         "cems_election_v7_fresh",
         "cems_election_v8_fresh"
       ].forEach(k => localStorage.removeItem(k));
-    } catch {}
+    } catch { }
   }
 
   // Synchronously ensure local state is applied first if present to avoid flicker
@@ -411,14 +423,14 @@ export async function initStore(): Promise<void> {
     } else {
       applyState(serverState);
       if (typeof window !== "undefined") {
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(serverState)); } catch {}
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(serverState)); } catch { }
       }
     }
   } else if (!localState) {
     const defaults = getDefaultState();
     applyState(defaults);
     if (typeof window !== "undefined") {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(defaults)); } catch {}
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(defaults)); } catch { }
     }
   }
 
@@ -432,32 +444,39 @@ export async function initStore(): Promise<void> {
   }
 }
 
+let isRefreshing = false;
 export async function refreshFromServer(): Promise<void> {
-  const localState = loadStateFromLocalStorage();
-  const serverState = await fetchServerState();
+  if (isRefreshing) return;
+  isRefreshing = true;
+  try {
+    const localState = loadStateFromLocalStorage();
+    const serverState = await fetchServerState();
 
-  if (serverState) {
-    if (serverState.lastUpdated) {
-      if (stateLastUpdated && serverState.lastUpdated === stateLastUpdated) {
-        return;
+    if (serverState) {
+      if (serverState.lastUpdated) {
+        if (stateLastUpdated && serverState.lastUpdated === stateLastUpdated) {
+          return;
+        }
+        // If local state has strictly newer timestamp, do not allow older server data to overwrite it
+        if (localState && localState.lastUpdated && localState.lastUpdated > serverState.lastUpdated) {
+          applyState(localState);
+          saveServerState(localState);
+          return;
+        }
       }
-      // If local state has strictly newer timestamp, do not allow older server data to overwrite it
-      if (localState && localState.lastUpdated && localState.lastUpdated > serverState.lastUpdated) {
-        applyState(localState);
-        saveServerState(localState);
-        return;
+
+      applyState(serverState);
+      if (typeof window !== "undefined") {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(serverState)); } catch { }
       }
+      return;
     }
 
-    applyState(serverState);
-    if (typeof window !== "undefined") {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(serverState)); } catch {}
+    if (localState && (!stateLastUpdated || (localState.lastUpdated && localState.lastUpdated > stateLastUpdated))) {
+      applyState(localState);
     }
-    return;
-  }
-
-  if (localState && (!stateLastUpdated || (localState.lastUpdated && localState.lastUpdated > stateLastUpdated))) {
-    applyState(localState);
+  } finally {
+    isRefreshing = false;
   }
 }
 
@@ -725,7 +744,11 @@ export const advanceStage1Winners = (topN = 2) => {
     });
 
     // Find all candidates and block reps with stage 1 votes for this position
-    const list = [...candidates.filter(c => c.position === pos)].sort((a, b) => (b.stage1Votes || b.votes) - (a.stage1Votes || a.votes));
+    const list = [...candidates.filter(c => c.position === pos)].sort((a, b) => {
+      const vA = (typeof a.stage1Votes === "number" ? a.stage1Votes : a.votes) || 0;
+      const vB = (typeof b.stage1Votes === "number" ? b.stage1Votes : b.votes) || 0;
+      return vB - vA;
+    });
 
     list.forEach((c, index) => {
       const idx = candidates.findIndex(cand => cand.id === c.id);
@@ -771,20 +794,33 @@ export const checkAutoScheduleTransitions = (now: Date = new Date()): boolean =>
     }
   }
 
-  // 2. Stage 1 -> Stage 2: Automatic Proceed if stage1EndDate has passed and stage2StartDate is scheduled
-  // OR if nowMs >= stage2StartDate and stage is still STAGE_1_NOMINATION or STAGE_1_ENDED
-  if ((electionSettings.currentStage === "STAGE_1_NOMINATION" || electionSettings.currentStage === "STAGE_1_ENDED") && electionSettings.stage2StartDate) {
-    const s1End = electionSettings.stage1EndDate ? new Date(electionSettings.stage1EndDate).getTime() : 0;
-    const s2Start = new Date(electionSettings.stage2StartDate).getTime();
+  // 2. Stage 1 -> Stage 1 Ended: Conclude Stage 1 when deadline passes
+  if (stage === "STAGE_1_NOMINATION" && electionSettings.stage1EndDate) {
+    const s1End = new Date(electionSettings.stage1EndDate).getTime();
+    if (!isNaN(s1End) && nowMs >= s1End) {
+      setElectionStage("STAGE_1_ENDED");
+      auditLogs.unshift({
+        id: `a${Date.now()}`,
+        action: "Stage 1 Nomination Concluded",
+        performedBy: "system_scheduler",
+        details: `Stage 1 voting deadline passed. Primary nomination voting concluded; finalists determined.`,
+        timestamp: new Date().toISOString(),
+      });
+      persistState();
+      changed = true;
+    }
+  }
 
-    // Proceed if Stage 1 ended according to schedule OR if Stage 2 scheduled start has arrived
-    if ((s1End > 0 && nowMs >= s1End) || (!isNaN(s2Start) && nowMs >= s2Start)) {
+  // 3. Stage 1 / Stage 1 Ended -> Stage 2: Automatic Proceed if Stage 2 scheduled start has arrived
+  if ((electionSettings.currentStage === "STAGE_1_NOMINATION" || electionSettings.currentStage === "STAGE_1_ENDED") && electionSettings.stage2StartDate) {
+    const s2Start = new Date(electionSettings.stage2StartDate).getTime();
+    if (!isNaN(s2Start) && nowMs >= s2Start) {
       advanceStage1Winners(electionSettings.topFinalistsCount || 2);
       auditLogs.unshift({
         id: `a${Date.now()}`,
         action: "Automatic Stage 2 Advancement",
         performedBy: "system_scheduler",
-        details: `Stage 1 voting deadline passed. System automatically promoted top ${electionSettings.topFinalistsCount || 2} candidates and transitioned to Stage 2 Final.`,
+        details: `Stage 2 scheduled start time arrived. System automatically promoted top ${electionSettings.topFinalistsCount || 2} candidates and transitioned to Stage 2 Final.`,
         timestamp: new Date().toISOString(),
       });
       persistState();
@@ -817,7 +853,7 @@ if (typeof window !== "undefined") {
   // Global periodic background sync and schedule transition evaluator (runs every 1.5s)
   setInterval(() => {
     checkAutoScheduleTransitions();
-    refreshFromServer().catch(() => {});
+    refreshFromServer().catch(() => { });
   }, 1500);
 }
 
@@ -1105,7 +1141,7 @@ export const resetToStep1BlockReps = (fillSampleReps = false) => {
     timestamp: new Date().toISOString(),
   });
 
-  persistState();
+  persistState(true);
 };
 
 export const getLeaderboard = () => {
@@ -1115,9 +1151,13 @@ export const getLeaderboard = () => {
     const list = grouped[pos] || [];
     const sorted = [...list].sort((a, b) => {
       if (stage === "STAGE_2_FINAL" || stage === "COMPLETED") {
-        return (b.stage2Votes || b.votes) - (a.stage2Votes || a.votes);
+        const vA = typeof a.stage2Votes === "number" ? a.stage2Votes : 0;
+        const vB = typeof b.stage2Votes === "number" ? b.stage2Votes : 0;
+        return vB - vA;
       }
-      return (b.stage1Votes || b.votes) - (a.stage1Votes || a.votes);
+      const vA = (typeof a.stage1Votes === "number" ? a.stage1Votes : a.votes) || 0;
+      const vB = (typeof b.stage1Votes === "number" ? b.stage1Votes : b.votes) || 0;
+      return vB - vA;
     });
     return { position: pos, candidates: sorted };
   });
@@ -1133,15 +1173,16 @@ export type PositionWinner = {
 };
 
 export const getElectionWinners = (): PositionWinner[] => {
+  const stage = electionSettings.currentStage;
   const grouped = getCandidatesByPosition();
   return positions.map(pos => {
     const list = grouped[pos] || [];
-    const getVotes = (c: Candidate) =>
-      c.stage2Votes !== undefined && c.stage2Votes > 0
-        ? c.stage2Votes
-        : typeof c.votes === "number"
-        ? c.votes
-        : 0;
+    const getVotes = (c: Candidate) => {
+      if (stage === "STAGE_2_FINAL" || stage === "COMPLETED") {
+        return typeof c.stage2Votes === "number" ? c.stage2Votes : 0;
+      }
+      return (typeof c.stage1Votes === "number" ? c.stage1Votes : c.votes) || 0;
+    };
 
     const sorted = [...list].sort((a, b) => getVotes(b) - getVotes(a));
     const totalVotes = list.reduce((sum, c) => sum + getVotes(c), 0);
@@ -1251,7 +1292,7 @@ export const clearAllBlockReps = () => {
     timestamp: new Date().toISOString(),
   });
 
-  persistState();
+  persistState(true);
 };
 
 export const startFromBeginning = () => {
@@ -1286,7 +1327,7 @@ export const startFromBeginning = () => {
     timestamp: new Date().toISOString(),
   });
 
-  persistState();
+  persistState(true);
 };
 
 export const importBlockReps = (reps: Omit<BlockRepresentative, "id">[]) => {
@@ -1653,7 +1694,7 @@ export const resetAllVotes = () => {
     details: "All vote counts cleared and voters reset across all stages",
     timestamp: new Date().toISOString(),
   });
-  persistState();
+  persistState(true);
 };
 
 export const resetElectionData = () => {
@@ -1666,6 +1707,6 @@ export const resetElectionData = () => {
   electionSettings = defaults.electionSettings;
   positions = defaults.positions;
   adminUsers = defaults.adminUsers ?? DEFAULT_ADMIN_USERS.map(u => ({ ...u }));
-  persistState();
+  persistState(true);
 };
 

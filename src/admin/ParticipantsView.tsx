@@ -146,7 +146,7 @@ export default function ParticipantsView() {
     a.href = url;
     a.download = `voters_registry_${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
-    URL.revokeObjectURL(a.href);
+    URL.revokeObjectURL(url);
     showToast("success", "Exported CSV successfully.");
   };
 

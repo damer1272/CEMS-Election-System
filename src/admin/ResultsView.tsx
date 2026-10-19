@@ -234,8 +234,8 @@ export default function ResultsView() {
       ) : (
         leaderboard.map(({ position, candidates }) => {
           const getCandidateVotes = (c: typeof candidates[number]) => {
-            if (isFinalStage) return c.stage2Votes ?? c.votes;
-            return c.stage1Votes ?? c.votes;
+            if (isFinalStage) return typeof c.stage2Votes === "number" ? c.stage2Votes : 0;
+            return typeof c.stage1Votes === "number" ? c.stage1Votes : (c.votes || 0);
           };
 
           // ONLY SHOW CANDIDATES THAT HAVE RECEIVED VOTES

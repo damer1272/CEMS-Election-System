@@ -30,8 +30,8 @@ export default function DashboardView() {
       setChartData(lb.map(({ position, candidates }) => {
         const topCandidate = candidates[0];
         const votes = (currentSettings.currentStage === "STAGE_2_FINAL" || currentSettings.currentStage === "COMPLETED")
-          ? (topCandidate?.stage2Votes ?? topCandidate?.votes ?? 0)
-          : (topCandidate?.stage1Votes ?? topCandidate?.votes ?? 0);
+          ? (typeof topCandidate?.stage2Votes === "number" ? topCandidate.stage2Votes : 0)
+          : (typeof topCandidate?.stage1Votes === "number" ? topCandidate.stage1Votes : (topCandidate?.votes ?? 0));
         return {
           position: position.replace(" ", "\n"),
           leader: votes > 0 ? (topCandidate?.name ?? "No votes yet") : "No votes yet",
@@ -135,10 +135,10 @@ export default function DashboardView() {
               {settings.currentStage === "STAGE_2_FINAL" ? "Stage 2 Final Votes" : "Stage 1 Primary Votes"}
             </span>
           </div>
-          {stats.candidates === 0 ? (
+          {stats.candidates === 0 && stats.blockReps === 0 ? (
             <div className="h-40 flex flex-col items-center justify-center text-center text-slate-400">
               <AlertCircle className="w-8 h-8 mb-2 text-slate-300" />
-              <p className="text-xs font-medium">No candidates registered yet.</p>
+              <p className="text-xs font-medium">No candidates or block representatives registered yet.</p>
               <p className="text-[11px] text-slate-400 mt-0.5">Input Block Representatives to begin nomination.</p>
             </div>
           ) : (

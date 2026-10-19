@@ -333,10 +333,15 @@ export default function VotingPage() {
     if (!participant) return;
     setIsSubmitting(true);
     setTimeout(() => {
-      castVote(participant.id, selections);
+      const ok = castVote(participant.id, selections);
       setIsSubmitting(false);
+      if (!ok) {
+        setError("Your vote could not be recorded. You may have already cast a vote for this stage, or the voting window has closed.");
+        setStep("confirm");
+        return;
+      }
       setStep("success");
-    }, 1000);
+    }, 600);
   };
 
   const timeUntilStart = getTimeUnits(scheduleStatus.msUntilStart);
@@ -544,7 +549,7 @@ export default function VotingPage() {
                           <p className="text-xs text-slate-400 truncate">{candidateQualificationLabel(winner)}</p>
                         </div>
                         <div className="text-right flex-shrink-0 font-mono">
-                          <p className="font-bold text-base text-[#FAC846]">{winner.stage2Votes ?? winner.votes}</p>
+                          <p className="font-bold text-base text-[#FAC846]">{typeof winner.stage2Votes === "number" ? winner.stage2Votes : winner.votes}</p>
                           <p className="text-[10px] text-slate-400 uppercase font-semibold">{winnerPercentage}%</p>
                         </div>
                       </div>
@@ -555,7 +560,7 @@ export default function VotingPage() {
                             <Avatar src={runnerUp.photo} name={runnerUp.name} className="w-7 h-7 rounded-full" fallbackClassName="bg-slate-700 text-white text-[10px]" />
                             <span className="truncate">{runnerUp.name}</span>
                           </div>
-                          <span className="font-mono text-slate-300 font-semibold flex-shrink-0">{runnerUp.stage2Votes ?? runnerUp.votes} votes</span>
+                          <span className="font-mono text-slate-300 font-semibold flex-shrink-0">{typeof runnerUp.stage2Votes === "number" ? runnerUp.stage2Votes : runnerUp.votes} votes</span>
                         </div>
                       )}
                     </div>
