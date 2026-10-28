@@ -483,39 +483,23 @@ export default function SettingsView() {
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5 truncate">
                     Stage 1 Start Date & Time
                   </label>
-                  <div className="relative min-w-0 w-full">
-                    <input
-                      type="datetime-local"
-                      value={form.stage1StartDate}
-                      onChange={e => setForm(f => f ? { ...f, stage1StartDate: e.target.value } : f)}
-                      className="w-full min-w-0 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#FF7D2D] focus:border-transparent transition"
-                    />
-                    {!form.stage1StartDate && (
-                      <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs sm:text-sm text-slate-400 select-none flex items-center gap-1.5 truncate pr-8">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                        <span className="truncate">Select start date & time</span>
-                      </span>
-                    )}
-                  </div>
+                  <input
+                    type="datetime-local"
+                    value={form.stage1StartDate}
+                    onChange={e => setForm(f => f ? { ...f, stage1StartDate: e.target.value } : f)}
+                    className="w-full min-w-0 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#FF7D2D] focus:border-transparent transition cursor-pointer"
+                  />
                 </div>
                 <div className="min-w-0">
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5 truncate">
                     Stage 1 Deadline (End Date & Time)
                   </label>
-                  <div className="relative min-w-0 w-full">
-                    <input
-                      type="datetime-local"
-                      value={form.stage1EndDate}
-                      onChange={e => setForm(f => f ? { ...f, stage1EndDate: e.target.value } : f)}
-                      className="w-full min-w-0 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#FF7D2D] focus:border-transparent transition"
-                    />
-                    {!form.stage1EndDate && (
-                      <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs sm:text-sm text-slate-400 select-none flex items-center gap-1.5 truncate pr-8">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                        <span className="truncate">Select end date & time</span>
-                      </span>
-                    )}
-                  </div>
+                  <input
+                    type="datetime-local"
+                    value={form.stage1EndDate}
+                    onChange={e => setForm(f => f ? { ...f, stage1EndDate: e.target.value } : f)}
+                    className="w-full min-w-0 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#FF7D2D] focus:border-transparent transition cursor-pointer"
+                  />
                 </div>
               </div>
             </div>
@@ -537,39 +521,23 @@ export default function SettingsView() {
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5 truncate">
                     Stage 2 Start Date & Time
                   </label>
-                  <div className="relative min-w-0 w-full">
-                    <input
-                      type="datetime-local"
-                      value={form.stage2StartDate}
-                      onChange={e => setForm(f => f ? { ...f, stage2StartDate: e.target.value } : f)}
-                      className="w-full min-w-0 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#FF7D2D] focus:border-transparent transition"
-                    />
-                    {!form.stage2StartDate && (
-                      <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs sm:text-sm text-slate-400 select-none flex items-center gap-1.5 truncate pr-8">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                        <span className="truncate">Select start date & time</span>
-                      </span>
-                    )}
-                  </div>
+                  <input
+                    type="datetime-local"
+                    value={form.stage2StartDate}
+                    onChange={e => setForm(f => f ? { ...f, stage2StartDate: e.target.value } : f)}
+                    className="w-full min-w-0 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#FF7D2D] focus:border-transparent transition cursor-pointer"
+                  />
                 </div>
                 <div className="min-w-0">
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5 truncate">
                     Stage 2 Deadline (Final End Date & Time)
                   </label>
-                  <div className="relative min-w-0 w-full">
-                    <input
-                      type="datetime-local"
-                      value={form.stage2EndDate}
-                      onChange={e => setForm(f => f ? { ...f, stage2EndDate: e.target.value } : f)}
-                      className="w-full min-w-0 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#FF7D2D] focus:border-transparent transition"
-                    />
-                    {!form.stage2EndDate && (
-                      <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs sm:text-sm text-slate-400 select-none flex items-center gap-1.5 truncate pr-8">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                        <span className="truncate">Select final deadline</span>
-                      </span>
-                    )}
-                  </div>
+                  <input
+                    type="datetime-local"
+                    value={form.stage2EndDate}
+                    onChange={e => setForm(f => f ? { ...f, stage2EndDate: e.target.value } : f)}
+                    className="w-full min-w-0 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#FF7D2D] focus:border-transparent transition cursor-pointer"
+                  />
                 </div>
               </div>
             </div>
